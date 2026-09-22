@@ -1,8 +1,11 @@
+import { useState } from "react";
 import { Box, Typography, Stack, InputBase, Button } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import { tokens } from "../theme";
 
-export default function Hero({ liveCount }) {
+export default function Hero({ liveCount, onSearch }) {
+  const [text, setText] = useState("");
+  const submit = () => onSearch(text.trim());
   return (
     <Box sx={{ pt: 7.5, pb: 2.5 }}>
       {/* eyebrow */}
@@ -43,10 +46,13 @@ export default function Hero({ liveCount }) {
       >
         <SearchIcon sx={{ color: "#c3bbac" }} />
         <InputBase
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && submit()}
           placeholder="Search “AI hackathons”, “startup networking”…"
           sx={{ flex: 1, fontSize: 15 }}
         />
-        <Button variant="contained" color="primary">
+        <Button variant="contained" color="primary" onClick={submit}>
           Search
         </Button>
       </Stack>

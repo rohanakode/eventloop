@@ -15,3 +15,20 @@ export async function getEvent(id) {
   const { data } = await api.get(`/events/${id}`);
   return data;
 }
+
+// Semantic search — ranks events by meaning.
+export async function searchEvents(q, type) {
+  const params = { q };
+  if (type) params.type = type;
+  const { data } = await api.get("/events/search", { params });
+  return data;
+}
+
+// Resume + intent → matched events (multipart form).
+export async function matchResume({ file, intent }) {
+  const fd = new FormData();
+  if (file) fd.append("resume", file);
+  if (intent) fd.append("intent", intent);
+  const { data } = await api.post("/match/resume", fd);
+  return data;
+}

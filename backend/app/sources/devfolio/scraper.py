@@ -11,12 +11,12 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import date, datetime
 
 import httpx
 
 from app.schemas.event import EventBase
 from app.sources.base import EventSource
+from app.utils.dates import iso_to_ist_date
 
 HACKATHONS_URL = "https://devfolio.co/hackathons"
 _NEXT_DATA_RE = re.compile(
@@ -28,16 +28,6 @@ _HEADERS = {
         "(KHTML, like Gecko) Chrome/122.0 Safari/537.36"
     )
 }
-
-
-def _to_date(value: str | None) -> date | None:
-    """Parse an ISO timestamp like '2026-10-08T04:30:00+00:00' into a date."""
-    if not value:
-        return None
-    try:
-        return datetime.fromisoformat(value).date()
-    except ValueError:
-        return None
 
 
 class DevfolioSource(EventSource):
@@ -73,7 +63,7 @@ class DevfolioSource(EventSource):
     def _normalize(self, h: dict) -> EventBase | None:
         """Map one Devfolio hackathon into our EventBase shape."""
         name = h.get("name")
-        starts_at = _to_date(h.get("starts_at"))
+        starts_at = iso_to_ist_date(h.get("starts_at"))
         if not name or starts_at is None:
             return None  # skip broken records (missing title/date)
 
@@ -90,7 +80,8 @@ class DevfolioSource(EventSource):
             description=self._build_description(theme_names, h.get("is_online", False)),
             type="hackathon",
             date=starts_at,
-            registration_deadline=_to_date(settings.get("reg_ends_at")),
+            end_date=iso_to_ist_date(h.get("ends_at")),
+            registration_deadline=iso_to_ist_date(settings.get("reg_ends_at")),
             city=None,  # Devfolio's list doesn't expose a city
             online=bool(h.get("is_online")),
             source=self.name,

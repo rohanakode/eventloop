@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException, Query
 
 from app.models.event import Event
 from app.schemas.event import EventOut, EventType
+from app.services.search import semantic_search
 
 router = APIRouter(prefix="/events", tags=["events"])
 
@@ -16,6 +17,7 @@ def _to_out(e: Event) -> EventOut:
         description=e.description,
         type=e.type,
         date=e.date.date(),
+        end_date=e.end_date.date() if e.end_date else None,
         registration_deadline=(
             e.registration_deadline.date() if e.registration_deadline else None
         ),
@@ -45,6 +47,16 @@ async def list_events(
     if city is not None:
         events = [e for e in events if (e.city or "").lower() == city.lower()]
 
+    return [_to_out(e) for e in events]
+
+
+@router.get("/search", response_model=list[EventOut])
+async def search_events(
+    q: str = Query(..., min_length=1, description="Natural-language search query"),
+    type: Optional[EventType] = Query(None, description="Optional category filter"),
+):
+    """Semantic search — ranks events by meaning, not exact keywords."""
+    events = await semantic_search(q, type=type)
     return [_to_out(e) for e in events]
 
 

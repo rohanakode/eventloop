@@ -13,20 +13,21 @@ import { tokens } from "../theme";
 function fullDate(iso) {
   const [y, m, d] = iso.split("-").map(Number);
   return new Date(y, m - 1, d).toLocaleDateString("en-IN", {
-    weekday: "short",
     day: "numeric",
     month: "short",
     year: "numeric",
   });
 }
 
-function daysUntil(iso) {
-  if (!iso) return null;
+function shortDate(iso) {
   const [y, m, d] = iso.split("-").map(Number);
-  const target = new Date(y, m - 1, d);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return Math.round((target - today) / 86400000);
+  return new Date(y, m - 1, d).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+}
+
+// "24 Oct – 1 Nov 2026" for multi-day events, else the full single date.
+function whenText(startIso, endIso) {
+  if (endIso && endIso !== startIso) return `${shortDate(startIso)} – ${fullDate(endIso)}`;
+  return fullDate(startIso);
 }
 
 export default function EventDetailPage() {
@@ -59,7 +60,6 @@ export default function EventDetailPage() {
   }
 
   const catColor = tokens.category[event.type] || tokens.accent;
-  const deadlineDays = daysUntil(event.registration_deadline || event.date);
   const related = allEvents.filter((e) => e.type === event.type && e.id !== event.id).slice(0, 3);
 
   return (
@@ -157,16 +157,16 @@ export default function EventDetailPage() {
         {/* Sticky register card */}
         <Box sx={{ position: { md: "sticky" }, top: 88, bgcolor: tokens.paper, border: `1px solid ${tokens.line}`, borderRadius: 3, p: 3, boxShadow: tokens.shadow }}>
           <Typography sx={{ fontSize: 12, fontWeight: 600, letterSpacing: ".5px", textTransform: "uppercase", color: tokens.muted }}>When</Typography>
-          <Typography sx={{ fontFamily: tokens.serif, fontWeight: 600, fontSize: 22, mt: 0.5 }}>{fullDate(event.date)}</Typography>
+          <Typography sx={{ fontFamily: tokens.serif, fontWeight: 600, fontSize: 22, mt: 0.5 }}>{whenText(event.date, event.end_date)}</Typography>
 
           <Stack direction="row" alignItems="center" spacing={1.25} sx={{ py: 1.75, mt: 2, borderTop: `1px solid ${tokens.line}`, color: "#4a463d", fontSize: 14.5 }}>
             {event.online ? <PublicIcon sx={{ fontSize: 18, color: "#b3ab9c" }} /> : <PlaceIcon sx={{ fontSize: 18, color: "#b3ab9c" }} />}
             <span>{event.online ? "Online" : event.city || "—"}</span>
           </Stack>
 
-          {deadlineDays !== null && deadlineDays >= 0 && (
+          {event.registration_deadline && (
             <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.75, bgcolor: "#fdeee7", color: tokens.accentDark, fontSize: 13, fontWeight: 600, px: 1.5, py: 1, borderRadius: 100, mb: 2 }}>
-              Registration closes in {deadlineDays} {deadlineDays === 1 ? "day" : "days"}
+              Registration closes on {fullDate(event.registration_deadline)}
             </Box>
           )}
 

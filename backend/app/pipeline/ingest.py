@@ -11,6 +11,7 @@ from app.database import init_db, close_db
 from app.models.event import Event
 from app.pipeline.filters import passes
 from app.schemas.event import EventBase
+from app.services.embeddings import embed_texts
 from app.sources.registry import get_sources
 
 PER_SOURCE_CAP = 30
@@ -36,17 +37,18 @@ async def delete_expired(today: date) -> int:
     return result.deleted_count if result else 0
 
 
-async def _upsert(base: EventBase) -> bool:
+async def _upsert(base: EventBase, embedding: list[float]) -> bool:
     """Insert a new event or update an existing one. Returns True if newly inserted."""
     key = _dedup_key(base)
+    doc = Event.from_base(base, key)
+    doc.embedding = embedding
     existing = await Event.find_one(Event.dedup_key == key)
     if existing:
-        doc = Event.from_base(base, key)
-        data = doc.model_dump(exclude={"id", "created_at", "embedding"})
+        data = doc.model_dump(exclude={"id", "created_at"})
         data["updated_at"] = datetime.now(timezone.utc)
         await existing.set(data)
         return False
-    await Event.from_base(base, key).insert()
+    await doc.insert()
     return True
 
 
@@ -87,11 +89,18 @@ async def run_ingestion() -> dict:
         for base in kept:
             collected.setdefault(_dedup_key(base), base)  # dedup within batch
 
-    # 2. Apply total cap, then upsert
+    # 2. Apply total cap, embed the batch, then upsert.
+    # Include type + tags in the embedded text so category-style queries
+    # (e.g. "coding competition") rank the right events higher.
     batch = list(collected.values())[:TOTAL_CAP]
+    texts = [
+        f"{b.title}. Category: {b.type}. {b.description} Topics: {', '.join(b.tags)}"
+        for b in batch
+    ]
+    vectors = embed_texts(texts) if batch else []
     inserted = updated = 0
-    for base in batch:
-        if await _upsert(base):
+    for base, vector in zip(batch, vectors):
+        if await _upsert(base, vector):
             inserted += 1
         else:
             updated += 1

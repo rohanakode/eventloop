@@ -25,6 +25,7 @@ class Event(Document):
     description: str
     type: str
     date: datetime                              # event start
+    end_date: Optional[datetime] = None         # event end (multi-day events)
     registration_deadline: Optional[datetime] = None
     city: Optional[str] = None
     online: bool = False
@@ -51,6 +52,7 @@ class Event(Document):
             description=base.description,
             type=base.type,
             date=_to_datetime(base.date),
+            end_date=_to_datetime(base.end_date),
             registration_deadline=_to_datetime(base.registration_deadline),
             city=base.city,
             online=base.online,

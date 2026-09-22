@@ -6,3 +6,8 @@ python-dotenv==1.0.1
 httpx==0.28.1
 motor==3.6.0
 beanie==1.29.0
+tzdata==2025.2
+fastembed==0.5.1
+pdfplumber==0.11.4
+groq==0.15.0
+python-multipart==0.0.20

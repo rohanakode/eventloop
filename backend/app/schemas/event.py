@@ -18,7 +18,8 @@ class EventBase(BaseModel):
     title: str
     description: str
     type: EventType
-    date: date                          # event start date
+    date: date                          # event start date (IST)
+    end_date: Optional[date] = None     # event end date (IST), for multi-day events
     registration_deadline: Optional[date] = None  # last date to register (drives expiry)
     city: Optional[str] = None
     online: bool = False

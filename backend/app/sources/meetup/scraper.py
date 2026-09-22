@@ -10,12 +10,12 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import date, datetime
 
 import httpx
 
 from app.schemas.event import EventBase, EventType
 from app.sources.base import EventSource
+from app.utils.dates import iso_to_ist_date
 
 FIND_URL = "https://www.meetup.com/find/"
 _NEXT_DATA_RE = re.compile(
@@ -29,19 +29,13 @@ _HEADERS = {
 }
 
 
-def _to_date(value: str | None) -> date | None:
-    if not value:
-        return None
-    try:
-        return datetime.fromisoformat(value).date()
-    except ValueError:
-        return None
-
-
 def _clean(text: str | None, limit: int = 500) -> str:
+    """Strip Markdown formatting and collapse whitespace into clean prose."""
     if not text:
         return ""
-    text = re.sub(r"\s+", " ", text).strip()
+    text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)  # [label](url) -> label
+    text = re.sub(r"[*_`#>~]+", "", text)                 # bold/italic/heading/quote marks
+    text = re.sub(r"\s+", " ", text).strip()              # collapse whitespace
     return text[:limit].rstrip() + ("…" if len(text) > limit else "")
 
 
@@ -103,7 +97,7 @@ class MeetupSource(EventSource):
 
     def _normalize(self, ev: dict, apollo: dict) -> EventBase | None:
         title = ev.get("title")
-        event_date = _to_date(ev.get("dateTime"))
+        event_date = iso_to_ist_date(ev.get("dateTime"))
         if not title or event_date is None:
             return None
 
@@ -116,12 +110,25 @@ class MeetupSource(EventSource):
             type=_infer_type(f"{title} {group_name or ''}"),
             date=event_date,
             registration_deadline=None,  # Meetup: register until event date
-            city=None if is_online else self.city_label,
+            city=None if is_online else self._resolve_city(ev.get("venue") or {}),
             online=is_online,
             source=self.name,
             source_url=ev.get("eventUrl"),
             tags=[group_name] if group_name else [],
         )
+
+    def _resolve_city(self, venue: dict) -> str | None:
+        """Tag as our target city only if the venue is actually there.
+
+        Meetup's location search can return nearby/other-city events, so we
+        check the real address rather than trusting the search location.
+        Returns the target city label for genuine matches, else the real city
+        (which the pipeline filter will then drop).
+        """
+        loc = " ".join(str(venue.get(k, "")) for k in ("address", "city", "state")).lower()
+        if "hyderabad" in loc or "telangana" in loc:
+            return self.city_label
+        return venue.get("city") or None
 
     @staticmethod
     def _resolve_group_name(group: dict | None, apollo: dict) -> str | None:

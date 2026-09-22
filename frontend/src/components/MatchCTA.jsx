@@ -1,6 +1,7 @@
 import { Box, Stack, Typography, Button } from "@mui/material";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import EastIcon from "@mui/icons-material/East";
+import { Link } from "react-router-dom";
 import { tokens } from "../theme";
 
 export default function MatchCTA() {
@@ -28,7 +29,7 @@ export default function MatchCTA() {
           Upload once — we’ll surface the events that fit your skills & goals.
         </Typography>
       </Box>
-      <Button variant="contained" color="primary" endIcon={<EastIcon />}>
+      <Button component={Link} to="/for-you" variant="contained" color="primary" endIcon={<EastIcon />}>
         Match my resume
       </Button>
     </Stack>
