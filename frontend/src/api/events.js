@@ -24,6 +24,29 @@ export async function searchEvents(q, type) {
   return data;
 }
 
+// Publish a user-posted event.
+export async function createEvent(payload) {
+  const { data } = await api.post("/events", payload);
+  return data;
+}
+
+// Events posted by the signed-in user.
+export async function getMyEvents() {
+  const { data } = await api.get("/events/mine");
+  return data;
+}
+
+// Edit an event you posted. Payload is partial — only send what changed.
+export async function updateEvent({ id, ...patch }) {
+  const { data } = await api.patch(`/events/${id}`, patch);
+  return data;
+}
+
+// Unpublish an event you posted.
+export async function deleteEvent(id) {
+  await api.delete(`/events/${id}`);
+}
+
 // Resume + intent → matched events (multipart form).
 export async function matchResume({ file, intent }) {
   const fd = new FormData();

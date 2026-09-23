@@ -3,10 +3,13 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from app.config import settings
 from app.database import init_db, close_db
-from app.routers import events, match
+from app.routers import account, events, match, teammates
+from app.utils.rate_limit import limiter
 
 
 @asynccontextmanager
@@ -17,6 +20,22 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title=settings.app_name, lifespan=lifespan)
+
+# Rate limiter (per-user; see app/utils/rate_limit.py). Handler translates a
+# blown limit into a clean 429 with a friendly message.
+app.state.limiter = limiter
+app.add_middleware(SlowAPIMiddleware)
+
+
+def _rate_limit_handler(_request, exc: RateLimitExceeded):
+    from fastapi.responses import JSONResponse
+    return JSONResponse(
+        status_code=429,
+        content={"detail": f"You've hit today's posting limit ({exc.detail}). Try again tomorrow."},
+    )
+
+
+app.add_exception_handler(RateLimitExceeded, _rate_limit_handler)
 
 # Allow the React frontend to call this API during development.
 app.add_middleware(
@@ -29,6 +48,8 @@ app.add_middleware(
 
 app.include_router(events.router)
 app.include_router(match.router)
+app.include_router(account.router)
+app.include_router(teammates.router)
 
 
 @app.get("/health", tags=["health"])

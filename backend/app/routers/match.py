@@ -23,7 +23,7 @@ MAX_PDF_BYTES = 5 * 1024 * 1024  # 5 MB
 @router.post("/resume", response_model=MatchResponse)
 async def match_resume(
     resume: Optional[UploadFile] = File(None, description="PDF resume (optional)"),
-    intent: Optional[str] = Form(None, description="What are you looking for?"),
+    intent: Optional[str] = Form(None, max_length=500, description="What are you looking for?"),
     limit: int = Form(8),
 ):
     """Rank events by fit to (resume + intent). Either field is optional but

@@ -34,6 +34,9 @@ class Event(Document):
     tags: list[str] = []
     embedding: Optional[list[float]] = None     # filled in a later step
     dedup_key: str
+    # Only set for events posted by a signed-in user (source="native").
+    user_id: Optional[str] = None
+    user_email: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -43,6 +46,7 @@ class Event(Document):
             pymongo.IndexModel("dedup_key", unique=True),
             "date",
             "type",
+            "user_id",
         ]
 
     @classmethod

@@ -1,5 +1,6 @@
-import { useParams, Link, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { Link, useParams, useNavigate } from "react-router-dom";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Container, Box, Stack, Typography, Button, Chip, Skeleton } from "@mui/material";
 import WestIcon from "@mui/icons-material/West";
 import NorthEastIcon from "@mui/icons-material/NorthEast";
@@ -8,6 +9,11 @@ import PublicIcon from "@mui/icons-material/Public";
 import PlaceIcon from "@mui/icons-material/Place";
 import GroupsIcon from "@mui/icons-material/Groups";
 import { getEvent, getEvents } from "../api/events";
+import { deleteTeammatePost, getTeammatesForEvent } from "../api/teammates";
+import { useAuth } from "../lib/AuthProvider";
+import AuthDialog from "../components/AuthDialog";
+import TeammateCard from "../components/TeammateCard";
+import TeammateDialog from "../components/TeammateDialog";
 import { tokens } from "../theme";
 
 function fullDate(iso) {
@@ -33,6 +39,36 @@ function whenText(startIso, endIso) {
 export default function EventDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const [teamOpen, setTeamOpen] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
+
+  // Return to wherever the user came from (Discover, My posts, For You, …).
+  // If they landed on this page via a direct URL / share link, fall back to
+  // the Discover home so they don't get bounced off the site.
+  const goBack = () => {
+    if (typeof window !== "undefined" && window.history.state?.idx > 0) navigate(-1);
+    else navigate("/");
+  };
+
+  const { data: teammates = [] } = useQuery({
+    queryKey: ["teammates", "event", id],
+    queryFn: () => getTeammatesForEvent(id),
+    enabled: Boolean(id),
+  });
+
+  const withdraw = useMutation({
+    mutationFn: deleteTeammatePost,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["teammates", "event", id] }),
+  });
+
+  const myPost = user ? teammates.find((t) => t.user_id === user.id) : null;
+
+  const openTeamFlow = () => {
+    if (!user) { setAuthOpen(true); return; }
+    setTeamOpen(true);
+  };
 
   const { data: event, isLoading, isError } = useQuery({
     queryKey: ["event", id],
@@ -54,7 +90,7 @@ export default function EventDetailPage() {
     return (
       <Container maxWidth="lg" sx={{ py: 8, textAlign: "center" }}>
         <Typography sx={{ color: tokens.muted }}>Event not found.</Typography>
-        <Button onClick={() => navigate("/")} sx={{ mt: 2 }}>Back to events</Button>
+        <Button onClick={goBack} sx={{ mt: 2 }}>Back to events</Button>
       </Container>
     );
   }
@@ -66,7 +102,7 @@ export default function EventDetailPage() {
     <Container maxWidth="lg" sx={{ pb: 8 }}>
       {/* Breadcrumb */}
       <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ py: 3 }}>
-        <Box component={Link} to="/" sx={{ display: "flex", alignItems: "center", gap: 1, color: tokens.muted, fontSize: 14, fontWeight: 500, "&:hover": { color: tokens.ink } }}>
+        <Box onClick={goBack} sx={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 1, color: tokens.muted, fontSize: 14, fontWeight: 500, "&:hover": { color: tokens.ink } }}>
           <WestIcon sx={{ fontSize: 18 }} /> Back to events
         </Box>
       </Stack>
@@ -129,10 +165,45 @@ export default function EventDetailPage() {
                   <GroupsIcon />
                 </Box>
                 <Box sx={{ flex: 1 }}>
-                  <Typography sx={{ fontFamily: tokens.serif, fontWeight: 600, fontSize: 17 }}>Looking for a team?</Typography>
-                  <Typography sx={{ color: tokens.muted, fontSize: 13.5 }}>Find teammates by skill for this hackathon.</Typography>
+                  <Typography sx={{ fontFamily: tokens.serif, fontWeight: 600, fontSize: 17 }}>
+                    {myPost ? "You're on the teammate board" : "Looking for a team?"}
+                  </Typography>
+                  <Typography sx={{ color: tokens.muted, fontSize: 13.5 }}>
+                    {myPost
+                      ? "People viewing this event can see your pitch."
+                      : `${teammates.length} ${teammates.length === 1 ? "person is" : "people are"} looking so far.`}
+                  </Typography>
                 </Box>
-                <Button variant="outlined" sx={{ borderColor: tokens.line, color: tokens.ink }}>Find teammates</Button>
+                {myPost ? (
+                  <Button
+                    variant="outlined"
+                    onClick={() => withdraw.mutate(myPost.id)}
+                    disabled={withdraw.isPending}
+                    sx={{ borderColor: tokens.line, color: tokens.ink }}
+                  >
+                    Withdraw
+                  </Button>
+                ) : (
+                  <Button variant="contained" onClick={openTeamFlow}>
+                    I'm looking for teammates
+                  </Button>
+                )}
+              </Stack>
+            </Section>
+          )}
+
+          {event.type === "hackathon" && teammates.length > 0 && (
+            <Section title={`Teammates for this hackathon · ${teammates.length}`}>
+              <Stack spacing={2}>
+                {teammates.map((t) => (
+                  <TeammateCard
+                    key={t.id}
+                    post={t}
+                    showEvent={false}
+                    canDelete={user?.id === t.user_id}
+                    onDelete={() => withdraw.mutate(t.id)}
+                  />
+                ))}
               </Stack>
             </Section>
           )}
@@ -187,6 +258,9 @@ export default function EventDetailPage() {
           </Button>
         </Box>
       </Box>
+
+      <TeammateDialog open={teamOpen} onClose={() => setTeamOpen(false)} event={event} />
+      <AuthDialog open={authOpen} onClose={() => setAuthOpen(false)} />
     </Container>
   );
 }

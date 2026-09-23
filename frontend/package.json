@@ -14,8 +14,11 @@
     "@emotion/styled": "^11.14.1",
     "@mui/icons-material": "^9.4.0",
     "@mui/material": "^9.4.0",
+    "@mui/x-date-pickers": "^9.14.0",
+    "@supabase/supabase-js": "^2.117.0",
     "@tanstack/react-query": "^5.103.2",
     "axios": "^1.20.0",
+    "dayjs": "^1.11.23",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.18.4"

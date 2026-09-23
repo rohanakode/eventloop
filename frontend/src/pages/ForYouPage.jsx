@@ -164,7 +164,6 @@ function Results({ result, onReset }) {
           <Box component="span" sx={{ color: tokens.accent, fontStyle: "italic" }}>
             {profile.headline || "professional"}
           </Box>
-          {profile.stage && profile.stage !== "unknown" ? ` · ${profile.stage}` : ""}
         </Typography>
         {(profile.skills?.length || profile.interests?.length) > 0 && (
           <Stack direction="row" flexWrap="wrap" gap={1} justifyContent="center" sx={{ mt: 2.5 }}>
