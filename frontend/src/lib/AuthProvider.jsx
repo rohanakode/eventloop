@@ -14,11 +14,12 @@ export function AuthProvider({ children }) {
       setSession(data.session);
       setLoading(false);
     });
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s);
-      // On sign-out (or user swap on the same tab), wipe cached fetches so
-      // one user never sees another user's data flash on screen.
-      if (!s) queryClient.clear();
+      // Only wipe the cache on an actual sign-out — not on the initial
+      // "no session" event a signed-out user sees on page load, otherwise
+      // in-flight queries get their results dropped on the floor.
+      if (event === "SIGNED_OUT") queryClient.clear();
     });
     return () => sub.subscription.unsubscribe();
   }, [queryClient]);
@@ -36,7 +37,7 @@ export function AuthProvider({ children }) {
         options: name ? { data: { name } } : undefined,
       }),
       resetPassword: (email) => supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/`,
+        redirectTo: `${window.location.origin}/reset-password`,
       }),
       signOut: async () => {
         const res = await supabase.auth.signOut();

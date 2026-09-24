@@ -46,7 +46,7 @@ async def mark_looking(payload: TeammateCreate, user: CurrentUser = Depends(requ
         raise HTTPException(status_code=404, detail="Event not found")
 
     # Prefer the display name they set at signup; fall back to email prefix.
-    display_name = (user.email.split("@")[0] if user.email else "someone")
+    display_name = user.name or (user.email.split("@")[0] if user.email else "someone")
 
     doc = TeammateInterest(
         user_id=user.id,

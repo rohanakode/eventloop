@@ -86,7 +86,8 @@ class UserEventCreate(BaseModel):
     registration_deadline: Optional[_date] = None
     city: Annotated[Optional[str], Field(max_length=80)] = None
     online: bool = False
-    source_url: Annotated[Optional[HttpUrl], Field(max_length=URL_MAX)] = None
+    # Registration link is required — an event without one has nowhere for attendees to sign up.
+    source_url: Annotated[HttpUrl, Field(max_length=URL_MAX)]
     tags: Annotated[
         list[Annotated[str, Field(min_length=1, max_length=30)]],
         Field(max_length=6),
@@ -213,3 +214,6 @@ class UserEventUpdate(BaseModel):
 
 class EventOut(EventBase):
     id: str
+    # Poster identifiers — only populated for user-posted (native) events.
+    user_id: Optional[str] = None
+    user_name: Optional[str] = None

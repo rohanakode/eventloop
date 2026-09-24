@@ -26,7 +26,7 @@ export default function MatchCTA() {
           Get events matched to your resume
         </Typography>
         <Typography sx={{ color: tokens.muted, fontSize: 14, mt: 0.25 }}>
-          Upload once — we’ll surface the events that fit your skills & goals.
+          Upload your resume once. Get the 6–8 events that actually fit your background.
         </Typography>
       </Box>
       <Button component={Link} to="/for-you" variant="contained" color="primary" endIcon={<EastIcon />}>

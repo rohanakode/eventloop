@@ -16,7 +16,7 @@ import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link as RouterLink } from "react-router-dom";
+import { Link as RouterLink, useLocation } from "react-router-dom";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import dayjs from "dayjs";
 import { createEvent, deleteEvent, getMyEvents, updateEvent } from "../api/events";
@@ -180,10 +180,9 @@ function validateForm(form) {
   }
 
   const url = form.sourceUrl.trim();
-  if (url) {
-    if (url.length > 500) errors.sourceUrl = "URL is too long.";
-    else if (!isValidUrl(url)) errors.sourceUrl = "Must be a valid https:// link.";
-  }
+  if (!url) errors.sourceUrl = "Add a registration link so attendees can sign up.";
+  else if (url.length > 500) errors.sourceUrl = "URL is too long.";
+  else if (!isValidUrl(url)) errors.sourceUrl = "Must be a valid https:// link.";
   return errors;
 }
 
@@ -201,6 +200,18 @@ export default function PostEventPage() {
     queryFn: getMyEvents,
     enabled: !!user,
   });
+
+  // If we arrived via "Edit" on the event detail page, hydrate the editing
+  // state from location.state and clear it so a refresh doesn't loop.
+  const location = useLocation();
+  useEffect(() => {
+    const incoming = location.state?.editEvent;
+    if (incoming) {
+      setEditing(incoming);
+      setTab("new");
+      window.history.replaceState({}, "");
+    }
+  }, [location.state]);
 
   // All hooks MUST run before any conditional return, otherwise the hook
   // count changes between renders and React throws "Rendered more hooks
@@ -265,10 +276,10 @@ function SignInGate({ onOpen }) {
         <LockOutlinedIcon sx={{ fontSize: 28 }} />
       </Box>
       <Typography variant="h1" sx={{ fontSize: { xs: 32, md: 40 }, lineHeight: 1.05, mb: 2 }}>
-        Sign in to <Box component="em" sx={{ fontStyle: "italic", fontWeight: 500, color: tokens.accent }}>post an event.</Box>
+        Sign in to post an event
       </Typography>
       <Typography sx={{ color: tokens.muted, fontSize: 16.5, lineHeight: 1.6, mb: 4 }}>
-        Free while EventLoop is in beta. Takes a minute.
+        Takes a minute. Nothing to pay while EventLoop is in beta.
       </Typography>
       <Button variant="contained" size="large" onClick={onOpen} sx={{ px: 4, py: 1.4, fontSize: 15 }}>
         Sign in to continue
@@ -353,11 +364,10 @@ function MyPostsList({ events, loading, onNew, onEdit }) {
             <AutoAwesomeIcon sx={{ fontSize: 26 }} />
           </Box>
           <Typography sx={{ fontFamily: tokens.serif, fontWeight: 500, fontSize: { xs: 24, md: 30 }, lineHeight: 1.15, mb: 1.5 }}>
-            You haven't posted{" "}
-            <Box component="em" sx={{ fontStyle: "italic", color: tokens.accent }}>anything yet.</Box>
+            Nothing here yet.
           </Typography>
           <Typography sx={{ color: tokens.muted, fontSize: 15.5, lineHeight: 1.6, maxWidth: "42ch", mx: "auto", mb: 3.5 }}>
-            When you host something — a hackathon, a workshop, a meetup — it'll live here.
+            Once you post a hackathon, workshop, or meetup, it shows up here.
           </Typography>
           <Button variant="contained" size="large" onClick={onNew} sx={{ px: 3.5, py: 1.35, fontSize: 14.5 }}>
             Post your first event
@@ -577,23 +587,17 @@ function PostEventForm({ editing, onPublished, onCancel }) {
     <Box>
       {/* Hero */}
       <Box sx={{ pt: 6, pb: 5, maxWidth: 720 }}>
-        <Stack direction="row" alignItems="center" spacing={1.2} sx={{ mb: 2.5 }}>
-          <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: tokens.accent, boxShadow: `0 0 0 4px ${tokens.accentSoft}` }} />
-          <Typography sx={{ fontSize: 13, fontWeight: 600, color: tokens.accentDark, letterSpacing: "0.4px", textTransform: "uppercase" }}>
-            {isEdit ? "Editing your event" : "Post an event · free while in beta"}
-          </Typography>
-        </Stack>
         <Typography variant="h1" sx={{ fontSize: { xs: 40, md: 56 }, lineHeight: 1.02 }}>
           {isEdit ? (
-            <>Make it{" "}<Box component="em" sx={{ fontStyle: "italic", fontWeight: 500, color: tokens.accent }}>even better.</Box></>
+            "Update your event"
           ) : (
             <>Host something{" "}<Box component="em" sx={{ fontStyle: "italic", fontWeight: 500, color: tokens.accent }}>worth showing up for.</Box></>
           )}
         </Typography>
         <Typography sx={{ color: tokens.muted, fontSize: 18, mt: 2.5, maxWidth: "52ch", lineHeight: 1.6 }}>
           {isEdit
-            ? "Update anything about your event. Changes go live immediately."
-            : "Put your hackathon, workshop or meetup in front of the right people — matched to their skills and goals, not blasted to a mailing list."}
+            ? "Change anything below. It goes live the moment you save."
+            : "Put your hackathon, workshop or meetup in front of the right people. Matched to skills, not blasted to a mailing list."}
         </Typography>
       </Box>
 
@@ -775,11 +779,12 @@ function PostEventForm({ editing, onPublished, onCancel }) {
               value={form.sourceUrl}
               onChange={(e) => set("sourceUrl")(e.target.value)}
               onBlur={() => touch("sourceUrl")}
+              required
               placeholder="https://…"
               label="Registration URL"
               InputLabelProps={{ shrink: true }}
               error={Boolean(shownError("sourceUrl"))}
-              helperText={shownError("sourceUrl")}
+              helperText={shownError("sourceUrl") || "Where attendees sign up. Devfolio, Luma, a Google Form, whatever you use."}
               fullWidth
               InputProps={{ startAdornment: <InputAdornment position="start"><LinkIcon sx={{ fontSize: 18, color: tokens.muted }} /></InputAdornment> }}
             />

@@ -27,6 +27,12 @@ from app.config import settings
 class CurrentUser:
     id: str        # Supabase user id (uuid, from `sub`)
     email: str     # user's email (from `email` claim)
+    name: str      # display name from `user_metadata.name` (empty if not set)
+
+
+def _name_from(claims: dict) -> str:
+    md = claims.get("user_metadata") or {}
+    return str(md.get("name") or md.get("full_name") or "").strip()
 
 
 _jwks_client: Optional[PyJWKClient] = None
@@ -95,7 +101,7 @@ def require_user(authorization: Optional[str] = Header(None)) -> CurrentUser:
     if not token:
         raise HTTPException(status_code=401, detail="Sign in to continue.")
     claims = _decode(token)
-    return CurrentUser(id=claims["sub"], email=claims.get("email", ""))
+    return CurrentUser(id=claims["sub"], email=claims.get("email", ""), name=_name_from(claims))
 
 
 def optional_user(authorization: Optional[str] = Header(None)) -> Optional[CurrentUser]:
@@ -105,4 +111,4 @@ def optional_user(authorization: Optional[str] = Header(None)) -> Optional[Curre
     if not token:
         return None
     claims = _decode(token)
-    return CurrentUser(id=claims["sub"], email=claims.get("email", ""))
+    return CurrentUser(id=claims["sub"], email=claims.get("email", ""), name=_name_from(claims))

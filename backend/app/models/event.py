@@ -37,6 +37,7 @@ class Event(Document):
     # Only set for events posted by a signed-in user (source="native").
     user_id: Optional[str] = None
     user_email: Optional[str] = None
+    user_name: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 

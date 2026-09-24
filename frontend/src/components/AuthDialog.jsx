@@ -97,8 +97,8 @@ export default function AuthDialog({ open, onClose, initialMode = "signin" }) {
 
         <Typography variant="h1" sx={{ fontSize: 30, lineHeight: 1.05, mb: 1 }}>
           {mode === "signin" && <>Sign in to <Box component="em" sx={{ fontStyle: "italic", fontWeight: 500, color: tokens.accent }}>EventLoop.</Box></>}
-          {mode === "signup" && <>Create your <Box component="em" sx={{ fontStyle: "italic", fontWeight: 500, color: tokens.accent }}>account.</Box></>}
-          {mode === "reset" && <>Forgot your <Box component="em" sx={{ fontStyle: "italic", fontWeight: 500, color: tokens.accent }}>password?</Box></>}
+          {mode === "signup" && "Create your account"}
+          {mode === "reset" && "Forgot your password?"}
         </Typography>
         <Typography sx={{ color: tokens.muted, fontSize: 14.5, mb: 3.5, lineHeight: 1.55 }}>
           {mode === "reset"

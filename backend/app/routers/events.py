@@ -31,6 +31,8 @@ def _to_out(e: Event) -> EventOut:
         source=e.source,
         source_url=e.source_url,
         tags=e.tags,
+        user_id=e.user_id if e.source == "native" else None,
+        user_name=e.user_name if e.source == "native" else None,
     )
 
 
@@ -68,6 +70,7 @@ async def create_event(
     doc.embedding = vector
     doc.user_id = user.id
     doc.user_email = user.email
+    doc.user_name = user.name or (user.email.split("@")[0] if user.email else "")
     doc.updated_at = datetime.now(timezone.utc)
     try:
         await doc.insert()
@@ -158,6 +161,10 @@ async def update_event(
         except Exception:
             raise HTTPException(status_code=502, detail="Could not re-embed the event — try again.")
 
+    # Refresh the stored display name from the current token so a user who
+    # renamed themselves in Supabase gets the new name on their events.
+    event.user_name = user.name or (user.email.split("@")[0] if user.email else event.user_name)
+    event.user_email = user.email or event.user_email
     event.updated_at = datetime.now(timezone.utc)
     await event.save()
     return _to_out(event)

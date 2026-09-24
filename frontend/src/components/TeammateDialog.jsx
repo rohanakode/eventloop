@@ -57,7 +57,7 @@ export default function TeammateDialog({ open, onClose, event }) {
       </DialogTitle>
       <DialogContent sx={{ px: 3.5, pb: 1 }}>
         <Typography sx={{ color: tokens.muted, fontSize: 14, mb: 2.5, lineHeight: 1.55 }}>
-          For <b>{event?.title}</b> — everyone viewing this event will see your pitch and how to reach you.
+          For <b>{event?.title}</b>. Everyone viewing this event will see your pitch and how to reach you.
         </Typography>
         <TextField
           value={pitch}

@@ -94,6 +94,7 @@ async def _text_search(query: str, limit: int, type: Optional[str]) -> list[Even
                     "should": [
                         {"text": {"query": query, "path": ["title", "tags"], "fuzzy": {"maxEdits": 2}, "score": {"boost": {"value": 4}}}},
                         {"text": {"query": query, "path": "type", "fuzzy": {"maxEdits": 2}, "score": {"boost": {"value": 3}}}},
+                        {"text": {"query": query, "path": "description", "fuzzy": {"maxEdits": 2}, "score": {"boost": {"value": 1}}}},
                     ],
                     "minimumShouldMatch": 1,
                 },

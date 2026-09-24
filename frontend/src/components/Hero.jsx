@@ -1,61 +1,74 @@
 import { useState } from "react";
-import { Box, Typography, Stack, InputBase, Button } from "@mui/material";
+import { Box, Typography, InputBase, IconButton } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
+import CloseIcon from "@mui/icons-material/Close";
 import { tokens } from "../theme";
 
-export default function Hero({ liveCount, onSearch }) {
-  const [text, setText] = useState("");
-  const submit = () => onSearch(text.trim());
+export default function Hero({ value, onSearch }) {
+  // Controlled if a `value` prop is passed (from the parent), otherwise
+  // fall back to internal state for standalone use.
+  const [internal, setInternal] = useState("");
+  const text = value !== undefined ? value : internal;
+  const change = (v) => {
+    if (value === undefined) setInternal(v);
+    onSearch(v);
+  };
+  const clear = () => change("");
   return (
-    <Box sx={{ pt: 7.5, pb: 2.5 }}>
-      {/* eyebrow */}
-      <Stack direction="row" alignItems="center" spacing={1.2} sx={{ mb: 2.5 }}>
-        <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: tokens.accent, boxShadow: `0 0 0 4px ${tokens.accentSoft}` }} />
-        <Typography sx={{ fontSize: 13, fontWeight: 600, color: tokens.accentDark, letterSpacing: "0.4px", textTransform: "uppercase" }}>
-          {liveCount} events live · Hyderabad
-        </Typography>
-      </Stack>
-
-      <Typography variant="h1" sx={{ fontSize: { xs: 42, md: 58 }, lineHeight: 1.02, maxWidth: "14ch" }}>
-        Where Hyderabad builds{" "}
+    <Box sx={{ pt: 7.5, pb: 2.5, textAlign: "center" }}>
+      <Typography variant="h1" sx={{ fontSize: { xs: 42, md: 64, lg: 72 }, lineHeight: 1.02, maxWidth: "30ch", mx: "auto" }}>
+        Every Hyderabad tech event,{" "}
         <Box component="em" sx={{ fontStyle: "italic", fontWeight: 500, color: tokens.accent }}>
-          what’s next.
+          in one place.
         </Box>
       </Typography>
 
-      <Typography sx={{ color: tokens.muted, fontSize: 18, mt: 2.5, maxWidth: "46ch", lineHeight: 1.6 }}>
-        Every hackathon, meetup, and startup night worth your time — gathered from across the web and matched to your goals.
+      <Typography sx={{ color: tokens.muted, fontSize: { xs: 17, md: 19 }, mt: 2.5, maxWidth: "68ch", mx: "auto", lineHeight: 1.6 }}>
+        Hackathons, meetups, workshops, startup nights. Aggregated from multiple sources and posted by community hosts.
       </Typography>
 
       {/* Search */}
-      <Stack
-        direction="row"
-        alignItems="center"
-        spacing={1.5}
+      <Box
         sx={{
+          display: "flex",
+          alignItems: "center",
           bgcolor: tokens.paper,
           border: `1px solid ${tokens.line}`,
           borderRadius: 100,
-          pl: 2.75,
-          pr: 1,
-          py: 1,
-          maxWidth: 520,
-          mt: 3.5,
+          pl: 2.25,
+          pr: 0.75,
+          height: 52,
+          width: "100%",
+          maxWidth: 640,
+          mt: 4,
+          mx: "auto",
           boxShadow: tokens.shadow,
+          gap: 1,
         }}
       >
-        <SearchIcon sx={{ color: "#c3bbac" }} />
+        <SearchIcon sx={{ color: "#c3bbac", fontSize: 20, flexShrink: 0 }} />
         <InputBase
           value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && submit()}
-          placeholder="Search “AI hackathons”, “startup networking”…"
-          sx={{ flex: 1, fontSize: 15 }}
+          onChange={(e) => change(e.target.value)}
+          placeholder="Search “AI hackathons”…"
+          sx={{
+            flex: 1,
+            fontSize: 14.5,
+            minWidth: 0,
+            height: "100%",
+            "& input": { p: 0, height: "100%" },
+          }}
         />
-        <Button variant="contained" color="primary" onClick={submit}>
-          Search
-        </Button>
-      </Stack>
+        {text && (
+          <IconButton
+            onClick={clear}
+            aria-label="Clear search"
+            sx={{ color: tokens.muted, flexShrink: 0, "&:hover": { color: tokens.ink } }}
+          >
+            <CloseIcon sx={{ fontSize: 18 }} />
+          </IconButton>
+        )}
+      </Box>
     </Box>
   );
 }

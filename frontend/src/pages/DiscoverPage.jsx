@@ -1,11 +1,9 @@
-import { useState, useMemo } from "react";
-import { Container, Box, Stack, Typography, Skeleton, Button } from "@mui/material";
-import CloseIcon from "@mui/icons-material/Close";
+import { useState, useEffect, useMemo } from "react";
+import { Container, Box, Stack, Typography, Skeleton } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
 import { getEvents, searchEvents } from "../api/events";
 import { tokens } from "../theme";
 import Hero from "../components/Hero";
-import MatchCTA from "../components/MatchCTA";
 import CategoryTabs from "../components/CategoryTabs";
 import EventRow from "../components/EventRow";
 
@@ -21,7 +19,15 @@ const CATS = [
 export default function DiscoverPage() {
   const [active, setActive] = useState("all");
   const [query, setQuery] = useState("");
+  // Debounce: only fire a search request 300 ms after the user stops typing.
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(query.trim()), 300);
+    return () => clearTimeout(t);
+  }, [query]);
+
   const searchActive = query.trim().length > 0;
+  const debouncedActive = debouncedQuery.length > 0;
 
   const { data: events = [], isLoading, isError } = useQuery({
     queryKey: ["events"],
@@ -29,9 +35,9 @@ export default function DiscoverPage() {
   });
 
   const { data: results = [], isFetching: searching } = useQuery({
-    queryKey: ["search", query],
-    queryFn: () => searchEvents(query),
-    enabled: searchActive,
+    queryKey: ["search", debouncedQuery],
+    queryFn: () => searchEvents(debouncedQuery),
+    enabled: debouncedActive,
   });
 
   const categories = useMemo(
@@ -47,18 +53,13 @@ export default function DiscoverPage() {
 
   return (
     <Container maxWidth="lg">
-      <Hero liveCount={events.length} onSearch={setQuery} />
+      <Hero value={query} onSearch={setQuery} />
 
       {searchActive ? (
         <Box sx={{ pb: 8 }}>
-          <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mt: 4, mb: 1 }}>
-            <Typography sx={{ color: tokens.muted, fontSize: 14 }}>
-              {searching ? "Searching…" : <>Results for <b style={{ color: tokens.ink }}>“{query}”</b> ({results.length})</>}
-            </Typography>
-            <Button size="small" startIcon={<CloseIcon sx={{ fontSize: 16 }} />} onClick={() => setQuery("")} sx={{ color: tokens.muted }}>
-              Clear
-            </Button>
-          </Stack>
+          <Typography sx={{ color: tokens.muted, fontSize: 14, mt: 4, mb: 1 }}>
+            {searching ? "Searching…" : <>Results for <b style={{ color: tokens.ink }}>“{query}”</b> ({results.length})</>}
+          </Typography>
           {searching && [...Array(4)].map((_, i) => <RowSkeleton key={i} />)}
           {!searching && results.length === 0 && (
             <Typography sx={{ color: tokens.muted, py: 6, textAlign: "center" }}>No matching events found.</Typography>
@@ -67,7 +68,6 @@ export default function DiscoverPage() {
         </Box>
       ) : (
         <>
-          <MatchCTA />
           <CategoryTabs categories={categories} active={active} onChange={setActive} />
           <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mt: 2.75, mb: 0.5, flexWrap: "wrap", gap: 1 }}>
             <Typography sx={{ color: tokens.muted, fontSize: 14 }}>

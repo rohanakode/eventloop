@@ -29,12 +29,6 @@ export default function ForYouPage() {
     <Container maxWidth="md" sx={{ pb: 10 }}>
       {/* Hero */}
       <Box sx={{ pt: 7, pb: 4, textAlign: "center" }}>
-        <Stack direction="row" alignItems="center" justifyContent="center" spacing={1.2} sx={{ mb: 2.5 }}>
-          <AutoAwesomeIcon sx={{ color: tokens.accent, fontSize: 18 }} />
-          <Typography sx={{ fontSize: 13, fontWeight: 600, color: tokens.accentDark, letterSpacing: "0.4px", textTransform: "uppercase" }}>
-            Personalized · powered by AI
-          </Typography>
-        </Stack>
         <Typography variant="h1" sx={{ fontSize: { xs: 40, md: 58 }, lineHeight: 1.02, maxWidth: "18ch", mx: "auto" }}>
           Events, matched to{" "}
           <Box component="em" sx={{ fontStyle: "italic", fontWeight: 500, color: tokens.accent }}>
@@ -42,7 +36,7 @@ export default function ForYouPage() {
           </Box>
         </Typography>
         <Typography sx={{ color: tokens.muted, fontSize: 18, mt: 2.5, maxWidth: "50ch", mx: "auto", lineHeight: 1.6 }}>
-          Drop your resume — we'll read it and surface the events that actually fit your skills and goals.
+          Drop your resume. We'll read it and rank the events that actually fit.
         </Typography>
       </Box>
 
@@ -70,7 +64,7 @@ export default function ForYouPage() {
           </Button>
           <Typography sx={{ fontSize: 12.5, color: tokens.muted, mt: 2, display: "flex", alignItems: "center", gap: 0.75 }}>
             <Box sx={{ width: 6, height: 6, borderRadius: "50%", bgcolor: "#22c55e" }} />
-            Processed in memory — never stored.
+            Processed in memory. Never stored.
           </Typography>
         </Stack>
       )}

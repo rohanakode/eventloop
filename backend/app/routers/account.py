@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.config import settings
 from app.models.event import Event
+from app.models.teammate import TeammateInterest
 from app.utils.auth import CurrentUser, require_user
 
 router = APIRouter(prefix="/account", tags=["account"])
@@ -26,8 +27,9 @@ async def delete_account(user: CurrentUser = Depends(require_user)):
             detail="Account deletion is not configured on the server.",
         )
 
-    # 1) Delete every event this user owns.
+    # 1) Wipe everything this user owns in our DB — events + teammate posts.
     await Event.find(Event.user_id == user.id).delete()
+    await TeammateInterest.find(TeammateInterest.user_id == user.id).delete()
 
     # 2) Hard-delete the Supabase auth user via the admin API.
     url = f"{settings.supabase_url.rstrip('/')}/auth/v1/admin/users/{user.id}"

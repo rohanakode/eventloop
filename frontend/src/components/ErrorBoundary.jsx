@@ -15,8 +15,13 @@ export default class ErrorBoundary extends Component {
   }
 
   componentDidCatch(error, info) {
-    // eslint-disable-next-line no-console
-    console.error("[ErrorBoundary]", error, info?.componentStack);
+    /* eslint-disable no-console */
+    console.group("%c[EventLoop] Render error caught by ErrorBoundary", "color:#cf4d24;font-weight:bold;");
+    console.error("Message:", error?.message);
+    console.error("Stack:", error?.stack);
+    if (info?.componentStack) console.error("Component stack:", info.componentStack);
+    console.groupEnd();
+    /* eslint-enable no-console */
   }
 
   render() {
