@@ -2,14 +2,8 @@ import { Box, Stack, Typography, IconButton } from "@mui/material";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlined";
 import LaunchIcon from "@mui/icons-material/Launch";
 import { Link as RouterLink } from "react-router-dom";
+import { tileFor } from "../lib/dateTile";
 import { tokens } from "../theme";
-
-const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-const parseDate = (iso) => {
-  if (!iso) return { day: "—", mon: "—" };
-  const [, m, d] = iso.split("-").map(Number);
-  return { day: String(d || "").padStart(2, "0"), mon: MONTHS[(m || 1) - 1] };
-};
 
 // Turn a contact string (email OR url OR handle) into a clickable link.
 function contactHref(contact) {
@@ -23,7 +17,7 @@ function contactHref(contact) {
 // Renders one teammate-interest row. Toggle `showEvent` off in event-scoped
 // contexts (the event page already shows the event above).
 export default function TeammateCard({ post, showEvent = true, onDelete, canDelete = false }) {
-  const { day, mon } = parseDate(post.event_date);
+  const { day, mon } = tileFor(post.event_date);
   const catColor = tokens.category[post.event_type] || tokens.muted;
   const href = contactHref(post.contact);
 
@@ -64,7 +58,7 @@ export default function TeammateCard({ post, showEvent = true, onDelete, canDele
                 {post.event_title}
               </Typography>
               <Typography sx={{ fontSize: 12.5, color: tokens.muted, mt: 0.25 }}>
-                {post.event_online ? "🌐 Online" : `📍 ${post.event_city || "—"}`}
+                {post.event_online ? "Online" : (post.event_city || "—")}
               </Typography>
             </Box>
           )}

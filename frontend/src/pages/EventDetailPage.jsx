@@ -1,18 +1,17 @@
 import { useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Container, Box, Stack, Typography, Button, Chip, Skeleton, Menu, MenuItem, Snackbar } from "@mui/material";
+import { Container, Box, Stack, Typography, Button, Chip, Skeleton, Menu, MenuItem } from "@mui/material";
 import WestIcon from "@mui/icons-material/West";
 import NorthEastIcon from "@mui/icons-material/NorthEast";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
-import PublicIcon from "@mui/icons-material/Public";
-import PlaceIcon from "@mui/icons-material/Place";
 import GroupsIcon from "@mui/icons-material/Groups";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import IosShareIcon from "@mui/icons-material/IosShare";
 import { getEvent, getEvents } from "../api/events";
 import { deleteTeammatePost, getTeammatesForEvent } from "../api/teammates";
 import { useAuth } from "../lib/AuthProvider";
+import { useToast } from "../lib/Toast";
 import AuthDialog from "../components/AuthDialog";
 import TeammateCard from "../components/TeammateCard";
 import TeammateDialog from "../components/TeammateDialog";
@@ -155,7 +154,7 @@ export default function EventDetailPage() {
   const [teamOpen, setTeamOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [calAnchor, setCalAnchor] = useState(null);
-  const [toast, setToast] = useState("");
+  const showToast = useToast();
 
   // On mobile: OS share sheet. On desktop: copy to clipboard. On both, a
   // <textarea> `execCommand` fallback covers older browsers or blocked APIs.
@@ -179,7 +178,7 @@ export default function EventDetailPage() {
     // Copy to clipboard.
     try {
       await navigator.clipboard.writeText(url);
-      setToast("Link copied");
+      showToast("Link copied");
       return;
     } catch { /* fall through */ }
 
@@ -194,9 +193,9 @@ export default function EventDetailPage() {
       ta.select();
       document.execCommand("copy");
       document.body.removeChild(ta);
-      setToast("Link copied");
+      showToast("Link copied");
     } catch {
-      setToast("Couldn't copy the link. Please copy it from the URL bar.");
+      showToast("Couldn't copy the link. Please copy it from the URL bar.");
     }
   };
 
@@ -216,7 +215,11 @@ export default function EventDetailPage() {
 
   const withdraw = useMutation({
     mutationFn: deleteTeammatePost,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["teammates", "event", id] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["teammates", "event", id] });
+      showToast("Removed from the teammate board.");
+    },
+    onError: () => showToast("Couldn't remove your post.", "error"),
   });
 
   const myPost = user ? teammates.find((t) => t.user_id === user.id) : null;
@@ -412,7 +415,6 @@ export default function EventDetailPage() {
           <Typography sx={{ fontFamily: tokens.serif, fontWeight: 600, fontSize: 22, mt: 0.5 }}>{whenText(event.date, event.end_date)}</Typography>
 
           <Stack direction="row" alignItems="center" spacing={1.25} sx={{ py: 1.75, mt: 2, borderTop: `1px solid ${tokens.line}`, color: "#4a463d", fontSize: 14.5 }}>
-            {event.online ? <PublicIcon sx={{ fontSize: 18, color: "#b3ab9c" }} /> : <PlaceIcon sx={{ fontSize: 18, color: "#b3ab9c" }} />}
             <span>{event.online ? "Online" : event.city || "—"}</span>
           </Stack>
 
@@ -488,14 +490,6 @@ export default function EventDetailPage() {
 
       <TeammateDialog open={teamOpen} onClose={() => setTeamOpen(false)} event={event} />
       <AuthDialog open={authOpen} onClose={() => setAuthOpen(false)} />
-      <Snackbar
-        open={Boolean(toast)}
-        onClose={() => setToast("")}
-        autoHideDuration={2600}
-        message={toast}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-        ContentProps={{ sx: { bgcolor: tokens.ink, color: "#fff", fontWeight: 500, borderRadius: 100, px: 2.5 } }}
-      />
     </Container>
   );
 }

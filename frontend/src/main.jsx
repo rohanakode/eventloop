@@ -8,6 +8,7 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import theme from "./theme";
 import { AuthProvider } from "./lib/AuthProvider";
+import { ToastProvider } from "./lib/Toast";
 import "./index.css";
 
 const queryClient = new QueryClient({
@@ -20,11 +21,13 @@ ReactDOM.createRoot(document.getElementById("root")).render(
       <CssBaseline />
       <QueryClientProvider client={queryClient}>
         <LocalizationProvider dateAdapter={AdapterDayjs}>
-          <AuthProvider>
-            <BrowserRouter>
-              <App />
-            </BrowserRouter>
-          </AuthProvider>
+          <ToastProvider>
+            <AuthProvider>
+              <BrowserRouter>
+                <App />
+              </BrowserRouter>
+            </AuthProvider>
+          </ToastProvider>
         </LocalizationProvider>
       </QueryClientProvider>
     </ThemeProvider>

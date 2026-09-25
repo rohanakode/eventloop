@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { deleteTeammatePost, getTeammates } from "../api/teammates";
 import TeammateCard from "../components/TeammateCard";
 import { useAuth } from "../lib/AuthProvider";
+import { useToast } from "../lib/Toast";
 import { tokens } from "../theme";
 
 const CATEGORIES = [
@@ -20,6 +21,7 @@ const CATEGORIES = [
 export default function TeammatesPage() {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const showToast = useToast();
   const [type, setType] = useState(null);
 
   const { data: posts = [], isLoading } = useQuery({
@@ -31,7 +33,9 @@ export default function TeammatesPage() {
     mutationFn: deleteTeammatePost,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["teammates"] });
+      showToast("Removed from the teammate board.");
     },
+    onError: () => showToast("Couldn't remove your post.", "error"),
   });
 
   // Group by event so each hackathon is a section.
@@ -121,12 +125,12 @@ export default function TeammatesPage() {
         <Stack spacing={5}>
           {grouped.map(({ event, posts }) => (
             <Box key={event.event_id}>
-              <Stack direction="row" alignItems="baseline" spacing={1.5} sx={{ mb: 2 }}>
-                <Typography variant="h2" sx={{ fontSize: 24 }}>{event.event_title}</Typography>
-                <Typography sx={{ color: tokens.muted, fontSize: 14 }}>
+              <Box sx={{ mb: 2, display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap" }}>
+                <Typography variant="h2" sx={{ fontSize: 24, lineHeight: 1 }}>{event.event_title}</Typography>
+                <Typography sx={{ color: tokens.muted, fontSize: 13.5, lineHeight: 1, mt: 0.75 }}>
                   {posts.length} looking
                 </Typography>
-              </Stack>
+              </Box>
               <Stack spacing={2}>
                 {posts.map((p) => (
                   <TeammateCard

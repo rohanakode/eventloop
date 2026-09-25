@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 import {
   Dialog, DialogContent, Box, Stack, Typography, TextField, Button, Alert,
 } from "@mui/material";
-import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import CloseIcon from "@mui/icons-material/Close";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../lib/AuthProvider";
+import { useToast } from "../lib/Toast";
 import { tokens } from "../theme";
 
 export default function AuthDialog({ open, onClose, initialMode = "signin" }) {
@@ -18,6 +18,7 @@ export default function AuthDialog({ open, onClose, initialMode = "signin" }) {
   const [resetSent, setResetSent] = useState(false);
   const { signIn, signUp, resetPassword } = useAuth();
   const navigate = useNavigate();
+  const showToast = useToast();
 
   // Wipe the form every time the dialog closes so it never opens pre-filled.
   useEffect(() => {
@@ -42,6 +43,7 @@ export default function AuthDialog({ open, onClose, initialMode = "signin" }) {
       setBusy(false);
       if (err) { setError(err.message); return; }
       setResetSent(true);
+      showToast("Reset link sent. Check your inbox.", "info");
       return;
     }
 
@@ -66,11 +68,17 @@ export default function AuthDialog({ open, onClose, initialMode = "signin" }) {
     // Signup with confirmation on → session is null → quietly flip to sign-in.
     if (mode === "signup" && !result.data?.session) {
       setMode("signin");
+      showToast("Account created. Check your inbox to confirm your email.", "info");
       return;
     }
     // Signed in (or auto-signed-in after signup) → drop them on the home page
     // so they choose what to do next, instead of landing mid-form.
     onClose?.();
+    if (mode === "signup") {
+      showToast(`Welcome, ${name.trim().split(" ")[0] || "friend"}.`, "sparkle");
+    } else {
+      showToast("Signed in.");
+    }
     navigate("/");
   };
 
@@ -84,12 +92,9 @@ export default function AuthDialog({ open, onClose, initialMode = "signin" }) {
     >
       <DialogContent sx={{ p: { xs: 3.5, md: 4.5 } }}>
         <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
-          <Stack direction="row" spacing={1.2} alignItems="center">
-            <AutoAwesomeIcon sx={{ color: tokens.accent, fontSize: 18 }} />
-            <Typography sx={{ fontSize: 12, fontWeight: 600, color: tokens.accentDark, letterSpacing: "0.4px", textTransform: "uppercase" }}>
-              {mode === "signin" ? "Welcome back" : mode === "signup" ? "New here" : "Reset password"}
-            </Typography>
-          </Stack>
+          <Typography sx={{ fontSize: 12, fontWeight: 600, color: tokens.accentDark, letterSpacing: "0.4px", textTransform: "uppercase" }}>
+            {mode === "signin" ? "Welcome back" : mode === "signup" ? "New here" : "Reset password"}
+          </Typography>
           <Box onClick={onClose} sx={{ cursor: "pointer", color: tokens.muted, "&:hover": { color: tokens.ink } }}>
             <CloseIcon sx={{ fontSize: 20 }} />
           </Box>

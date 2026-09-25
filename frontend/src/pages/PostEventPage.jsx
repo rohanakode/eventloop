@@ -2,9 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Container, Box, Stack, Typography, TextField, Button, Chip, Switch,
   FormControlLabel, InputAdornment, Alert, CircularProgress, IconButton,
-  Dialog, DialogTitle, DialogContent, DialogActions,
+  Dialog, DialogTitle, DialogContent, DialogActions, Skeleton,
 } from "@mui/material";
-import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import PlaceIcon from "@mui/icons-material/Place";
 import LinkIcon from "@mui/icons-material/Link";
@@ -21,6 +20,8 @@ import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import dayjs from "dayjs";
 import { createEvent, deleteEvent, getMyEvents, updateEvent } from "../api/events";
 import { useAuth } from "../lib/AuthProvider";
+import { useToast } from "../lib/Toast";
+import { tileFor } from "../lib/dateTile";
 import AuthDialog from "../components/AuthDialog";
 import { tokens } from "../theme";
 
@@ -32,13 +33,6 @@ const CATEGORIES = [
   { key: "networking",    label: "Networking" },
   { key: "communication", label: "Communication" },
 ];
-
-const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-const parseDate = (iso) => {
-  if (!iso) return { day: "—", mon: "—" };
-  const [, m, d] = iso.split("-").map(Number);
-  return { day: String(d || "").padStart(2, "0"), mon: MONTHS[(m || 1) - 1] };
-};
 
 const EMPTY = {
   title: "",
@@ -317,8 +311,37 @@ function TabBar({ tab, setTab, count, editing = false }) {
   );
 }
 
+function MyPostSkeleton() {
+  return (
+    <Box
+      sx={{
+        bgcolor: tokens.paper,
+        border: `1px solid ${tokens.line}`,
+        borderRadius: 3,
+        p: 2.5,
+        display: "flex",
+        gap: 2.5,
+        alignItems: "center",
+      }}
+    >
+      <Box sx={{ textAlign: "center", minWidth: 60, borderRight: `1px solid ${tokens.line}`, pr: 2.5 }}>
+        <Skeleton variant="text" width={32} height={30} sx={{ mx: "auto" }} />
+        <Skeleton variant="text" width={28} height={14} sx={{ mx: "auto" }} />
+      </Box>
+      <Box sx={{ flex: 1 }}>
+        <Skeleton variant="text" width={100} height={14} />
+        <Skeleton variant="text" width="70%" height={22} sx={{ mt: 0.5 }} />
+        <Skeleton variant="text" width={90} height={14} sx={{ mt: 0.5 }} />
+      </Box>
+      <Skeleton variant="circular" width={32} height={32} />
+      <Skeleton variant="circular" width={32} height={32} />
+    </Box>
+  );
+}
+
 function MyPostsList({ events, loading, onNew, onEdit }) {
   const qc = useQueryClient();
+  const showToast = useToast();
   const [toDelete, setToDelete] = useState(null); // event pending confirmation
   const del = useMutation({
     mutationFn: deleteEvent,
@@ -329,24 +352,30 @@ function MyPostsList({ events, loading, onNew, onEdit }) {
       qc.setQueryData(["events", "mine"], (old = []) => old.filter((e) => e.id !== eventId));
       return { previous };
     },
+    onSuccess: () => showToast("Event removed."),
     onError: (_err, _eventId, context) => {
       if (context?.previous) qc.setQueryData(["events", "mine"], context.previous);
+      showToast("Couldn't remove the event.", "error");
     },
     onSettled: () => qc.invalidateQueries({ queryKey: ["events", "mine"] }),
   });
 
   return (
     <Box sx={{ pt: 4 }}>
-      <Stack direction="row" alignItems="baseline" spacing={1.5} sx={{ mb: 3 }}>
-        <Typography variant="h1" sx={{ fontSize: { xs: 34, md: 42 } }}>
+      <Box sx={{ mb: 3, display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap" }}>
+        <Typography variant="h1" sx={{ fontSize: { xs: 34, md: 42 }, lineHeight: 1 }}>
           Your <Box component="em" sx={{ fontStyle: "italic", fontWeight: 500, color: tokens.accent }}>posted events.</Box>
         </Typography>
-        <Typography sx={{ color: tokens.muted, fontSize: 15, alignSelf: "flex-end", pb: 0.5 }}>
+        <Typography sx={{ color: tokens.muted, fontSize: 14.5, lineHeight: 1, mt: 1 }}>
           {events.length} {events.length === 1 ? "event" : "events"}
         </Typography>
-      </Stack>
+      </Box>
 
-      {loading && <Typography sx={{ color: tokens.muted, py: 4, textAlign: "center" }}>Loading…</Typography>}
+      {loading && (
+        <Stack spacing={2}>
+          {[0, 1, 2].map((i) => <MyPostSkeleton key={i} />)}
+        </Stack>
+      )}
 
       {!loading && events.length === 0 && (
         <Box
@@ -360,9 +389,6 @@ function MyPostsList({ events, loading, onNew, onEdit }) {
             bgcolor: tokens.paper,
           }}
         >
-          <Box sx={{ width: 56, height: 56, borderRadius: "50%", bgcolor: tokens.accentSoft, color: tokens.accent, display: "grid", placeItems: "center", mx: "auto", mb: 3 }}>
-            <AutoAwesomeIcon sx={{ fontSize: 26 }} />
-          </Box>
           <Typography sx={{ fontFamily: tokens.serif, fontWeight: 500, fontSize: { xs: 24, md: 30 }, lineHeight: 1.15, mb: 1.5 }}>
             Nothing here yet.
           </Typography>
@@ -377,7 +403,7 @@ function MyPostsList({ events, loading, onNew, onEdit }) {
 
       <Stack spacing={2}>
         {events.map((e) => {
-          const { day, mon } = parseDate(e.date);
+          const { day, mon, isRange } = tileFor(e.date, e.end_date);
           const catColor = tokens.category[e.type] || tokens.muted;
           return (
             <Box
@@ -393,8 +419,8 @@ function MyPostsList({ events, loading, onNew, onEdit }) {
                 alignItems: "center",
               }}
             >
-              <Box sx={{ textAlign: "center", minWidth: 60, borderRight: `1px solid ${tokens.line}`, pr: 2.5 }}>
-                <Typography sx={{ fontFamily: tokens.serif, fontWeight: 600, fontSize: 24, lineHeight: 1 }}>{day}</Typography>
+              <Box sx={{ textAlign: "center", minWidth: isRange ? 78 : 60, borderRight: `1px solid ${tokens.line}`, pr: 2.5 }}>
+                <Typography sx={{ fontFamily: tokens.serif, fontWeight: 600, fontSize: isRange ? 18 : 24, lineHeight: 1 }}>{day}</Typography>
                 <Typography sx={{ fontSize: 10.5, fontWeight: 600, letterSpacing: "1px", textTransform: "uppercase", color: tokens.muted, mt: 0.4 }}>{mon}</Typography>
               </Box>
               <Box component={RouterLink} to={`/events/${e.id}`} sx={{ flex: 1, minWidth: 0, textDecoration: "none", color: "inherit" }}>
@@ -408,7 +434,7 @@ function MyPostsList({ events, loading, onNew, onEdit }) {
                   {e.title}
                 </Typography>
                 <Typography sx={{ color: tokens.muted, fontSize: 13, mt: 0.5 }}>
-                  {e.online ? "🌐 Online" : `📍 ${e.city || "—"}`}
+                  {e.online ? "Online" : (e.city || "—")}
                 </Typography>
               </Box>
               <IconButton
@@ -477,6 +503,7 @@ function ConfirmDeleteDialog({ event, onCancel, onConfirm }) {
 
 function PostEventForm({ editing, onPublished, onCancel }) {
   const qc = useQueryClient();
+  const showToast = useToast();
   const isEdit = Boolean(editing);
   const [form, setForm] = useState(() => (editing ? formFromEvent(editing) : EMPTY));
   const [tagDraft, setTagDraft] = useState("");
@@ -486,11 +513,14 @@ function PostEventForm({ editing, onPublished, onCancel }) {
     mutationFn: isEdit
       ? (body) => updateEvent({ id: editing.id, ...body })
       : createEvent,
-    onSuccess: () => {
+    onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ["events", "mine"] });
-      // Edit path: leave the form immediately. Create path: let the SuccessCard
-      // render (via `published` truthy check below).
-      if (isEdit) onPublished?.();
+      if (isEdit) {
+        showToast("Changes saved.");
+        onPublished?.();
+      } else {
+        showToast(`“${data?.title || "Your event"}” is live.`, "sparkle");
+      }
     },
   });
   const published = mutation.data;
@@ -555,6 +585,7 @@ function PostEventForm({ editing, onPublished, onCancel }) {
       }
       // Nothing changed → treat as success without an API call.
       if (Object.keys(patch).length === 0) {
+        showToast("Nothing to save.", "info");
         onPublished?.();
         return;
       }
@@ -838,7 +869,7 @@ function Section({ title, children }) {
 }
 
 function PreviewPanel({ form }) {
-  const { day, mon } = useMemo(() => parseDate(form.date), [form.date]);
+  const { day, mon, isRange } = useMemo(() => tileFor(form.date, form.endDate), [form.date, form.endDate]);
   const cat = CATEGORIES.find((c) => c.key === form.type);
   const catColor = tokens.category[form.type] || tokens.accent;
 
@@ -857,8 +888,8 @@ function PreviewPanel({ form }) {
         }}
       >
         <Stack direction="row" spacing={2.5} alignItems="flex-start">
-          <Box sx={{ textAlign: "center", minWidth: 68, borderRight: `1px solid ${tokens.line}`, pr: 2.5 }}>
-            <Typography sx={{ fontFamily: tokens.serif, fontWeight: 600, fontSize: 30, lineHeight: 1 }}>{day}</Typography>
+          <Box sx={{ textAlign: "center", minWidth: isRange ? 92 : 68, borderRight: `1px solid ${tokens.line}`, pr: 2.5 }}>
+            <Typography sx={{ fontFamily: tokens.serif, fontWeight: 600, fontSize: isRange ? 22 : 30, lineHeight: 1 }}>{day}</Typography>
             <Typography sx={{ fontSize: 11, fontWeight: 600, letterSpacing: "1px", textTransform: "uppercase", color: tokens.muted, mt: 0.4 }}>{mon}</Typography>
           </Box>
           <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -877,7 +908,7 @@ function PreviewPanel({ form }) {
                 : "A short teaser will appear here as you write."}
             </Typography>
             <Stack direction="row" spacing={2} sx={{ color: tokens.muted, fontSize: 13.5, fontWeight: 500 }}>
-              <span>{form.online ? "🌐 Online" : `📍 ${form.city || "City"}`}</span>
+              <span>{form.online ? "Online" : (form.city || "City")}</span>
               <span>via native</span>
             </Stack>
             {form.tags.length > 0 && (
@@ -896,13 +927,10 @@ function PreviewPanel({ form }) {
 }
 
 function SuccessCard({ event, onReset, onBack }) {
-  const { day, mon } = parseDate(event.date);
+  const { day, mon, isRange } = tileFor(event.date, event.end_date);
   const catColor = tokens.category[event.type] || tokens.accent;
   return (
     <Container maxWidth="sm" sx={{ pt: 10, pb: 10, textAlign: "center" }}>
-      <Box sx={{ width: 64, height: 64, borderRadius: "50%", bgcolor: tokens.accentSoft, color: tokens.accent, display: "grid", placeItems: "center", mx: "auto", mb: 3 }}>
-        <AutoAwesomeIcon sx={{ fontSize: 30 }} />
-      </Box>
       <Typography variant="h1" sx={{ fontSize: { xs: 34, md: 42 }, lineHeight: 1.05, mb: 2 }}>
         You just{" "}
         <Box component="em" sx={{ fontStyle: "italic", fontWeight: 500, color: tokens.accent }}>
@@ -918,8 +946,8 @@ function SuccessCard({ event, onReset, onBack }) {
         sx={{ display: "block", bgcolor: tokens.paper, border: `1px solid ${tokens.line}`, borderRadius: 3, p: 2.5, textAlign: "left", boxShadow: tokens.shadow, textDecoration: "none", color: "inherit", transition: ".15s", "&:hover": { borderColor: "#d8cdb8", transform: "translateY(-2px)" } }}
       >
         <Stack direction="row" spacing={2} alignItems="center">
-          <Box sx={{ textAlign: "center", minWidth: 56 }}>
-            <Typography sx={{ fontFamily: tokens.serif, fontWeight: 600, fontSize: 24, lineHeight: 1 }}>{day}</Typography>
+          <Box sx={{ textAlign: "center", minWidth: isRange ? 76 : 56 }}>
+            <Typography sx={{ fontFamily: tokens.serif, fontWeight: 600, fontSize: isRange ? 18 : 24, lineHeight: 1 }}>{day}</Typography>
             <Typography sx={{ fontSize: 10.5, fontWeight: 600, letterSpacing: "1px", textTransform: "uppercase", color: tokens.muted }}>{mon}</Typography>
           </Box>
           <Box sx={{ flex: 1 }}>

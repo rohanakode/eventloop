@@ -5,10 +5,12 @@ import {
 } from "@mui/material";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createTeammatePost } from "../api/teammates";
+import { useToast } from "../lib/Toast";
 import { tokens } from "../theme";
 
 export default function TeammateDialog({ open, onClose, event }) {
   const qc = useQueryClient();
+  const showToast = useToast();
   const [pitch, setPitch] = useState("");
   const [contact, setContact] = useState("");
   const [error, setError] = useState("");
@@ -27,6 +29,7 @@ export default function TeammateDialog({ open, onClose, event }) {
       qc.invalidateQueries({ queryKey: ["teammates"] });
       qc.invalidateQueries({ queryKey: ["teammates", "event", event?.id] });
       qc.invalidateQueries({ queryKey: ["teammates", "mine"] });
+      showToast("You're on the teammate board.", "sparkle");
       onClose?.();
     },
   });

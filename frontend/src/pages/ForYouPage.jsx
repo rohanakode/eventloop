@@ -2,28 +2,46 @@ import { useState, useRef } from "react";
 import {
   Container, Box, Stack, Typography, Button, Chip, LinearProgress, Alert,
 } from "@mui/material";
-import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
-import EastIcon from "@mui/icons-material/East";
 import CheckIcon from "@mui/icons-material/Check";
-import CloseIcon from "@mui/icons-material/Close";
 import { useMutation } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { matchResume } from "../api/events";
+import { useToast } from "../lib/Toast";
+import { tileFor } from "../lib/dateTile";
 import { tokens } from "../theme";
-
-const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-const parseDate = (iso) => { const [,m,d]=iso.split("-").map(Number); return {day:String(d).padStart(2,"0"), mon:MONTHS[m-1]}; };
 
 export default function ForYouPage() {
   const [file, setFile] = useState(null);
   const inputRef = useRef(null);
+  const showToast = useToast();
 
-  const mutation = useMutation({ mutationFn: matchResume });
+  const mutation = useMutation({
+    mutationFn: matchResume,
+    onSuccess: (data) => {
+      const count = (data?.matches || []).length;
+      if (count > 0) {
+        showToast(`Matched to ${count} event${count === 1 ? "" : "s"}.`, "sparkle");
+      } else {
+        showToast("No strong matches yet — check back as more events get added.", "info");
+      }
+    },
+    onError: () => showToast("Couldn't read the resume. Try a different PDF.", "error"),
+  });
   const result = mutation.data;
 
-  const onFile = (f) => { if (f && f.type === "application/pdf") { setFile(f); mutation.reset(); } };
-  const reset = () => { setFile(null); mutation.reset(); };
+  const onFile = (f) => {
+    if (!f || f.type !== "application/pdf") return;
+    setFile(f);
+    mutation.reset();
+    // Kick off the match immediately — no button click needed.
+    mutation.mutate({ file: f });
+  };
+  const reset = () => {
+    setFile(null);
+    mutation.reset();
+    if (inputRef.current) inputRef.current.value = "";
+  };
 
   return (
     <Container maxWidth="md" sx={{ pb: 10 }}>
@@ -49,28 +67,19 @@ export default function ForYouPage() {
       />
       <input ref={inputRef} type="file" accept="application/pdf" hidden onChange={(e) => onFile(e.target.files?.[0])} />
 
-      {file && !result && (
-        <Stack alignItems="center" sx={{ mt: 3 }}>
-          <Button
-            variant="contained"
-            color="primary"
-            size="large"
-            disabled={mutation.isPending}
-            endIcon={<EastIcon />}
-            onClick={() => mutation.mutate({ file })}
-            sx={{ px: 4, py: 1.5, fontSize: 15 }}
-          >
-            {mutation.isPending ? "Reading your resume…" : "Match my events"}
-          </Button>
-          <Typography sx={{ fontSize: 12.5, color: tokens.muted, mt: 2, display: "flex", alignItems: "center", gap: 0.75 }}>
-            <Box sx={{ width: 6, height: 6, borderRadius: "50%", bgcolor: "#22c55e" }} />
-            Processed in memory. Never stored.
+      {mutation.isPending && (
+        <Stack alignItems="center" sx={{ mt: 3.5 }}>
+          <LinearProgress sx={{ width: "100%", maxWidth: 320, borderRadius: 100, "& .MuiLinearProgress-bar": { bgcolor: tokens.accent } }} />
+          <Typography sx={{ fontSize: 13, color: tokens.muted, mt: 1.5 }}>
+            Reading your resume…
           </Typography>
         </Stack>
       )}
-
-      {mutation.isPending && (
-        <LinearProgress sx={{ mt: 3, borderRadius: 100, "& .MuiLinearProgress-bar": { bgcolor: tokens.accent } }} />
+      {file && !result && !mutation.isPending && !mutation.isError && (
+        <Typography component="span" sx={{ fontSize: 12.5, color: tokens.muted, mt: 2.5, display: "flex", alignItems: "center", justifyContent: "center", gap: 0.75 }}>
+          <Box component="span" sx={{ width: 6, height: 6, borderRadius: "50%", bgcolor: "#22c55e" }} />
+          Processed in memory. Never stored.
+        </Typography>
       )}
       {mutation.isError && (
         <Alert severity="error" sx={{ mt: 3 }}>
@@ -115,9 +124,6 @@ function DropZone({ file, onFile, onClear, onOpen }) {
           </Box>
           <Typography sx={{ fontFamily: tokens.serif, fontWeight: 600, fontSize: 18 }}>{file.name}</Typography>
           <Typography sx={{ fontSize: 13, color: tokens.muted }}>{(file.size / 1024).toFixed(0)} KB</Typography>
-          <Button size="small" onClick={onClear} startIcon={<CloseIcon sx={{ fontSize: 14 }} />} sx={{ color: tokens.muted, fontSize: 12.5 }}>
-            Choose a different file
-          </Button>
         </Stack>
       ) : (
         <Stack alignItems="center" spacing={1.5}>
@@ -196,10 +202,10 @@ function Results({ result, onReset }) {
 function Section({ title, subtitle, children, sx }) {
   return (
     <Box sx={sx}>
-      <Stack direction="row" alignItems="baseline" spacing={1.5} sx={{ mb: 2 }}>
-        <Typography variant="h2" sx={{ fontSize: 26 }}>{title}</Typography>
-        <Typography sx={{ color: tokens.muted, fontSize: 14 }}>{subtitle}</Typography>
-      </Stack>
+      <Box sx={{ mb: 2, display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap" }}>
+        <Typography variant="h2" sx={{ fontSize: 26, lineHeight: 1 }}>{title}</Typography>
+        <Typography sx={{ color: tokens.muted, fontSize: 13.5, lineHeight: 1, mt: 0.75 }}>{subtitle}</Typography>
+      </Box>
       <Stack spacing={2}>{children}</Stack>
     </Box>
   );
@@ -207,10 +213,9 @@ function Section({ title, subtitle, children, sx }) {
 
 function MatchRow({ match }) {
   const { event, score, reason } = match;
-  const { day, mon } = parseDate(event.date);
+  const { day, mon, isRange } = tileFor(event.date, event.end_date);
   const catColor = tokens.category[event.type] || tokens.muted;
   const strength = score >= 0.7 ? "Strong match" : score >= 0.6 ? "Good match" : "Related";
-  const bar = Math.min(1, Math.max(0.3, score));
 
   return (
     <Box
@@ -228,36 +233,31 @@ function MatchRow({ match }) {
       }}
     >
       <Stack direction={{ xs: "column", sm: "row" }} spacing={2.5} alignItems={{ sm: "center" }}>
-        <Box sx={{ textAlign: "center", minWidth: 68, borderRight: { sm: `1px solid ${tokens.line}` }, pr: { sm: 2.5 } }}>
-          <Typography sx={{ fontFamily: tokens.serif, fontWeight: 600, fontSize: 26, lineHeight: 1 }}>{day}</Typography>
+        <Box sx={{ textAlign: "center", minWidth: isRange ? 84 : 68, borderRight: { sm: `1px solid ${tokens.line}` }, pr: { sm: 2.5 } }}>
+          <Typography sx={{ fontFamily: tokens.serif, fontWeight: 600, fontSize: isRange ? 20 : 26, lineHeight: 1 }}>{day}</Typography>
           <Typography sx={{ fontSize: 11, fontWeight: 600, letterSpacing: "1px", textTransform: "uppercase", color: tokens.muted, mt: 0.4 }}>{mon}</Typography>
         </Box>
 
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Stack direction="row" alignItems="center" spacing={1.25} sx={{ mb: 0.75 }}>
-            <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: catColor }} />
-            <Typography sx={{ fontSize: 11.5, fontWeight: 600, color: tokens.muted, textTransform: "uppercase", letterSpacing: "0.4px" }}>
+          <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 0.75 }}>
+            <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: catColor, flexShrink: 0, display: "block" }} />
+            <Typography sx={{ fontSize: 11.5, fontWeight: 600, color: tokens.muted, textTransform: "uppercase", letterSpacing: "0.4px", lineHeight: 1, display: "flex", alignItems: "center" }}>
               {event.type}
             </Typography>
-            <Box sx={{ ml: "auto", display: "flex", alignItems: "center", gap: 0.75 }}>
-              <AutoAwesomeIcon sx={{ fontSize: 14, color: tokens.accent }} />
-              <Typography sx={{ fontSize: 12, fontWeight: 600, color: tokens.accentDark }}>{strength}</Typography>
+            <Box sx={{ ml: "auto" }}>
+              <Typography sx={{ fontSize: 12, fontWeight: 600, color: tokens.accentDark, lineHeight: 1 }}>{strength}</Typography>
             </Box>
           </Stack>
           <Typography sx={{ fontFamily: tokens.serif, fontWeight: 500, fontSize: 19, lineHeight: 1.25, mb: 0.75 }}>
             {event.title}
           </Typography>
           <Typography sx={{ color: tokens.accentDark, fontSize: 13.5, fontWeight: 500, mb: 1.25 }}>
-            ✦ {reason}
+            {reason}
           </Typography>
           <Stack direction="row" spacing={2} sx={{ color: tokens.muted, fontSize: 13.5, fontWeight: 500 }}>
-            <span>{event.online ? "🌐 Online" : `📍 ${event.city || "—"}`}</span>
+            <span>{event.online ? "Online" : (event.city || "—")}</span>
             <span>via {event.source}</span>
           </Stack>
-
-          <Box sx={{ mt: 1.5, height: 3, borderRadius: 100, bgcolor: tokens.line, overflow: "hidden" }}>
-            <Box sx={{ width: `${bar * 100}%`, height: "100%", bgcolor: tokens.accent, borderRadius: 100 }} />
-          </Box>
         </Box>
       </Stack>
     </Box>

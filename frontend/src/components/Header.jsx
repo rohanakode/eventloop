@@ -8,6 +8,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { tokens } from "../theme";
 import { useAuth } from "../lib/AuthProvider";
+import { useToast } from "../lib/Toast";
 import { deleteAccount } from "../api/account";
 import AuthDialog from "./AuthDialog";
 
@@ -23,6 +24,12 @@ export default function Header() {
   const { pathname } = useLocation();
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const showToast = useToast();
+
+  const doSignOut = async () => {
+    await signOut();
+    showToast("Signed out.");
+  };
   const [authOpen, setAuthOpen] = useState(false);
   const [anchor, setAnchor] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -38,6 +45,7 @@ export default function Header() {
       await signOut();
       setDeleteOpen(false);
       navigate("/");
+      showToast("Account deleted.", "info");
     } catch (err) {
       setDeleteError(err?.response?.data?.detail || "Could not delete your account. Try again.");
     } finally {
@@ -136,7 +144,16 @@ export default function Header() {
                 anchorEl={anchor}
                 open={Boolean(anchor)}
                 onClose={() => setAnchor(null)}
+                autoFocus={false}
+                disableAutoFocusItem
+                MenuListProps={{ autoFocusItem: false, disableListWrap: true }}
                 PaperProps={{ sx: { mt: 1, borderRadius: 3, minWidth: 220, border: `1px solid ${tokens.line}`, boxShadow: tokens.shadow } }}
+                sx={{
+                  "& .MuiMenuItem-root": {
+                    "&.Mui-focusVisible, &:focus": { bgcolor: "transparent" },
+                    "&:hover": { bgcolor: "rgba(0,0,0,0.04)" },
+                  },
+                }}
               >
                 <Box sx={{ px: 2, py: 1.25 }}>
                   <Box sx={{ fontSize: 11, fontWeight: 600, color: tokens.muted, letterSpacing: "0.4px", textTransform: "uppercase" }}>
@@ -155,7 +172,7 @@ export default function Header() {
                 <MenuItem component={Link} to="/post" onClick={() => setAnchor(null)} sx={{ fontSize: 14 }}>
                   My posted events
                 </MenuItem>
-                <MenuItem onClick={async () => { setAnchor(null); await signOut(); }} sx={{ fontSize: 14 }}>
+                <MenuItem onClick={async () => { setAnchor(null); await doSignOut(); }} sx={{ fontSize: 14 }}>
                   Sign out
                 </MenuItem>
                 <Divider sx={{ my: 0.5 }} />
@@ -237,7 +254,7 @@ export default function Header() {
                 <Button
                   fullWidth
                   variant="outlined"
-                  onClick={async () => { setDrawerOpen(false); await signOut(); }}
+                  onClick={async () => { setDrawerOpen(false); await doSignOut(); }}
                   sx={{ borderColor: tokens.line, color: tokens.ink }}
                 >
                   Sign out
