@@ -13,5 +13,7 @@ def get_sources() -> list[EventSource]:
     return [
         DevfolioSource(),
         MeetupSource(location="in--Hyderabad", keywords="tech", city_label="Hyderabad"),
-        UnstopSource(pages=2, per_page=50, city_label="Hyderabad"),
+        # Unstop yields fewer per page after strict date-accuracy filtering, so
+        # we fetch a bit deeper to keep a healthy count of trustworthy events.
+        UnstopSource(pages=4, per_page=50, city_label="Hyderabad"),
     ]
