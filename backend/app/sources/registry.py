@@ -6,6 +6,7 @@ in the pipeline needs to change.
 from app.sources.base import EventSource
 from app.sources.devfolio.scraper import DevfolioSource
 from app.sources.meetup.scraper import MeetupSource
+from app.sources.thub.scraper import THubSource
 from app.sources.unstop.scraper import UnstopSource
 
 
@@ -16,4 +17,5 @@ def get_sources() -> list[EventSource]:
         # Unstop yields fewer per page after strict date-accuracy filtering, so
         # we fetch a bit deeper to keep a healthy count of trustworthy events.
         UnstopSource(pages=4, per_page=50, city_label="Hyderabad"),
+        THubSource(city_label="Hyderabad"),
     ]
