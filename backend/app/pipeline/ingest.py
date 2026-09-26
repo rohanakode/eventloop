@@ -27,12 +27,15 @@ def _dedup_key(base: EventBase) -> str:
 
 
 async def delete_expired(today: date) -> int:
-    """Remove events whose event date OR registration deadline has passed."""
+    """Remove events that are over (end date, else start date, has passed) OR
+    whose registration deadline has passed. Using the end date keeps multi-day
+    events live until they actually finish."""
     cutoff = datetime.combine(today, time.min)
     result = await Event.find(
         {"$or": [
-            {"date": {"$lt": cutoff}},
-            {"registration_deadline": {"$lt": cutoff}},
+            {"end_date": {"$lt": cutoff}},                       # multi-day event ended
+            {"end_date": None, "date": {"$lt": cutoff}},         # single-day event past
+            {"registration_deadline": {"$lt": cutoff}},          # registration closed
         ]}
     ).delete()
     return result.deleted_count if result else 0

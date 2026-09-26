@@ -36,10 +36,14 @@ def is_hyderabad_or_online(event: EventBase) -> bool:
 
 
 def is_active(event: EventBase, today: date | None = None) -> bool:
-    """Active = the event hasn't happened AND registration hasn't closed."""
+    """Active = the event hasn't finished AND registration hasn't closed.
+
+    Uses the end date when present so a multi-day event stays live until it
+    actually ends, not the moment it starts."""
     today = today or date.today()
-    if event.date is None or event.date < today:
-        return False  # event already happened
+    effective_end = event.end_date or event.date
+    if effective_end is None or effective_end < today:
+        return False  # event is over
     if event.registration_deadline is not None and event.registration_deadline < today:
         return False  # registration closed
     return True

@@ -418,12 +418,6 @@ export default function EventDetailPage() {
             <span>{event.online ? "Online" : event.city || "-"}</span>
           </Stack>
 
-          {event.registration_deadline && (
-            <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.75, bgcolor: "#fdeee7", color: tokens.accentDark, fontSize: 13, fontWeight: 600, px: 1.5, py: 1, borderRadius: 100, mb: 2 }}>
-              Registration closes on {fullDate(event.registration_deadline)}
-            </Box>
-          )}
-
           {event.source_url ? (
             <Button
               fullWidth

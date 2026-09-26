@@ -1,26 +1,21 @@
-"""Unstop source (hackathons for Indian students + professionals).
+"""Unstop source (hackathons + related competitions for Indian students/pros).
 
-Unstop (https://unstop.com) exposes a public JSON search API that its own
-frontend calls -- no auth or cookies needed. We hit the hackathons endpoint and
-normalize each opportunity into an EventBase.
+Unstop (https://unstop.com) exposes public JSON APIs that its own frontend
+calls -- no auth or cookies needed.
 
-Why this scraper is more involved than the others
---------------------------------------------------
-Unstop lists *registration opportunities*, not clean calendar events, so its
-structured data does NOT line up with our EventBase the way Devfolio/Meetup do:
+Two endpoints are used:
+  1. Search list: gives the opportunities (title, region, venue, HTML details,
+     topic tags). But its `end_date` is a registration/opportunity boundary, NOT
+     the real event schedule, and it has no event start date.
+  2. Competition detail (`/api/public/competition/{id}`): its
+     `competition.rounds[].details[].start_date/end_date` are the AUTHORITATIVE
+     event dates (the "Stages & Timeline" shown on the page). We use these so the
+     event dates on our site match Unstop exactly.
 
-- `end_date` is the REGISTRATION DEADLINE (same as regnRequirements.end_regn_dt),
-  NOT the date the hackathon happens. The real event date usually appears only in
-  the free-text `details` (e.g. "Dates: 5th & 6th December 2026"). So we:
-    * PARSE the event date out of the description, and
-    * map `end_date` to `registration_deadline` (which is what it actually is),
-    * DROP the event when no real date can be parsed, so we never show a
-      misleading (registration-deadline-as-event) date.
-
-- `region` ("online"/"offline"/"hybrid") is unreliable for hackathons that run
-  online qualifier rounds then an offline finale. So we decide online/city from
-  the description's "Mode:" line and the structured venue city, not `region`
-  alone.
+To keep the number of detail calls sane, we first cheaply pre-filter the list to
+online/hybrid or Hyderabad opportunities, then fetch the detail only for those.
+An opportunity with no parseable round dates is DROPPED (we never show a guessed
+or registration-deadline date).
 
 Only fetch + normalize here. Filtering (Hyderabad + online, expiry) and
 de-duplication happen later in the pipeline.
@@ -39,6 +34,7 @@ from app.sources.base import EventSource
 from app.utils.dates import iso_to_ist_date
 
 API_URL = "https://unstop.com/api/public/opportunity/search-result"
+DETAIL_URL = "https://unstop.com/api/public/competition/{opp_id}"
 _HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -47,20 +43,6 @@ _HEADERS = {
     "Accept": "application/json",
 }
 _TAG_RE = re.compile(r"<[^>]+>")
-
-# --- date parsing from the free-text description ---------------------------
-_MONTHS = {
-    **{m: i for i, m in enumerate(
-        ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"], 1)},
-    **{m: i for i, m in enumerate(
-        ["january", "february", "march", "april", "may", "june", "july", "august",
-         "september", "october", "november", "december"], 1)},
-}
-_SEP = r"(?:\s*(?:&|and|,|to|[-–—])?\s*\d{1,2}(?:st|nd|rd|th)?)?"  # optional 2nd day of a range
-# "5th December 2026", "5th & 6th December 2026", "5-6 December 2026"
-_DAY_FIRST = re.compile(rf"\b(\d{{1,2}})(?:st|nd|rd|th)?{_SEP}\s+([a-z]{{3,9}})\.?\s+(\d{{4}})\b", re.I)
-# "December 5, 2026", "December 5-6 2026"
-_MONTH_FIRST = re.compile(rf"\b([a-z]{{3,9}})\.?\s+(\d{{1,2}})(?:st|nd|rd|th)?{_SEP},?\s+(\d{{4}})\b", re.I)
 _MODE_RE = re.compile(r"mode\s*[:\-]?\s*(online|offline|hybrid)", re.I)
 
 
@@ -84,7 +66,7 @@ class _TextExtractor(HTMLParser):
 
 
 def _plaintext(details: str | None) -> str:
-    """HTML -> visible plain text, keeping punctuation (so date/mode phrases survive)."""
+    """HTML -> visible plain text, keeping punctuation."""
     if not details:
         return ""
     parser = _TextExtractor()
@@ -94,6 +76,11 @@ def _plaintext(details: str | None) -> str:
     except Exception:
         text = _TAG_RE.sub(" ", html.unescape(details))  # last-resort fallback
     return re.sub(r"\s+", " ", text).strip()
+
+
+def _strip_html(text: str | None, limit: int = 500) -> str:
+    plain = _plaintext(text)
+    return plain[:limit].rstrip() + ("…" if len(plain) > limit else "")
 
 
 def _infer_type(title: str, description: str) -> str:
@@ -113,115 +100,107 @@ def _infer_type(title: str, description: str) -> str:
     return "hackathon"  # default: it came from the hackathons listing
 
 
-def _mk_date(day: str, month: str, year: str) -> date | None:
-    mon = _MONTHS.get(month.lower())
-    if not mon:
-        return None
-    try:
-        return date(int(year), mon, int(day))
-    except ValueError:
-        return None
-
-
-def _event_dates(text: str) -> list[date]:
-    """Every valid calendar date mentioned in the description text."""
-    found: list[date] = []
-    for d, m, y in _DAY_FIRST.findall(text):
-        dt = _mk_date(d, m, y)
-        if dt:
-            found.append(dt)
-    for m, d, y in _MONTH_FIRST.findall(text):
-        dt = _mk_date(d, m, y)
-        if dt:
-            found.append(dt)
-    return found
-
-
-def _pick_event_date(text: str, deadline: date | None, today: date) -> date | None:
-    """Choose the event date from the description, or None if we can't trust one.
-
-    A hackathon happens on/after registration closes, so a valid event date must
-    be at or after the deadline. We take the earliest parsed date that satisfies
-    that. If the description has no such date, we return None (and the caller
-    drops the event) rather than trusting an unrelated date mentioned in the
-    text -- this is what keeps false dates off the site."""
-    future = sorted(d for d in _event_dates(text) if d >= today)
-    if not future:
-        return None
-    if deadline is None:
-        return future[0]
-    after = [d for d in future if d >= deadline]
-    return after[0] if after else None
-
-
-def _strip_html(text: str | None, limit: int = 500) -> str:
-    plain = _plaintext(text)
-    return plain[:limit].rstrip() + ("…" if len(plain) > limit else "")
+def _round_date_range(competition: dict) -> tuple[date | None, date | None]:
+    """The real event start/end from the competition's rounds (the source of
+    truth for dates). Spans all rounds: earliest start to latest end."""
+    starts: list[date] = []
+    ends: list[date] = []
+    for rnd in competition.get("rounds") or []:
+        for det in rnd.get("details") or []:
+            s = iso_to_ist_date(det.get("start_date"))
+            e = iso_to_ist_date(det.get("end_date"))
+            if s:
+                starts.append(s)
+            if e:
+                ends.append(e)
+    return (min(starts) if starts else None, max(ends) if ends else None)
 
 
 class UnstopSource(EventSource):
     name = "unstop"
 
-    def __init__(self, pages: int = 2, per_page: int = 50, city_label: str = "Hyderabad"):
+    def __init__(self, pages: int = 4, per_page: int = 50, city_label: str = "Hyderabad",
+                 max_details: int = 60):
         self.pages = pages
         self.per_page = per_page
         self.city_label = city_label
+        # Cap on per-event detail API calls per run, to bound scrape time.
+        self.max_details = max_details
 
     def fetch(self) -> list[EventBase]:
         today = date.today()
-        events: list[EventBase] = []
+        # 1) Collect list candidates, cheaply pre-filtered to bound detail calls.
+        candidates: list[dict] = []
         for page in range(1, self.pages + 1):
-            for opp in self._fetch_page(page):
-                event = self._normalize(opp, today)
-                if event is not None:
-                    events.append(event)
+            candidates.extend(o for o in self._fetch_page(page) if self._is_relevant(o))
+        candidates = candidates[: self.max_details]
+
+        # 2) Fetch each candidate's detail for authoritative dates + normalize.
+        events: list[EventBase] = []
+        for opp in candidates:
+            event = self._normalize(opp, today)
+            if event is not None:
+                events.append(event)
         return events
 
     # --- internal helpers -------------------------------------------------
 
     def _fetch_page(self, page: int) -> list[dict]:
-        params = {
-            "opportunity": "hackathons",
-            "page": page,
-            "per_page": self.per_page,
-            "oppstatus": "open",
-        }
+        params = {"opportunity": "hackathons", "page": page,
+                  "per_page": self.per_page, "oppstatus": "open"}
         resp = httpx.get(API_URL, params=params, headers=_HEADERS, timeout=25, follow_redirects=True)
         resp.raise_for_status()
         data = resp.json().get("data") or {}
         return data.get("data") or []
 
+    def _fetch_detail(self, opp_id) -> dict | None:
+        if not opp_id:
+            return None
+        try:
+            resp = httpx.get(DETAIL_URL.format(opp_id=opp_id), headers=_HEADERS,
+                             timeout=25, follow_redirects=True)
+            resp.raise_for_status()
+            return (resp.json().get("data") or {}).get("competition")
+        except Exception:
+            return None  # a flaky detail call just drops that one event
+
+    def _is_relevant(self, opp: dict) -> bool:
+        """Cheap pre-filter on list data so we only fetch details for events that
+        could pass the pipeline's Hyderabad-or-online rule."""
+        region = (opp.get("region") or "").lower()
+        addr = opp.get("address_with_country_logo") or {}
+        city = (addr.get("city") or "").lower()
+        slug = (opp.get("public_url") or "").lower()
+        return region in ("online", "hybrid") or "hyderabad" in f"{city} {slug}"
+
     def _normalize(self, opp: dict, today: date) -> EventBase | None:
         title = (opp.get("title") or "").strip()
-        # `end_date` is the registration deadline, NOT the event date.
-        deadline = iso_to_ist_date(opp.get("end_date"))
-        details = opp.get("details")
-        plain = _plaintext(details)
-
-        # Real event date: parse it from the description. Unstop's structured
-        # `end_date` is the registration deadline, not the event date, so if we
-        # can't find a real date in the text we DROP the event rather than show
-        # a misleading one.
-        event_date = _pick_event_date(plain, deadline, today)
-        if not title or event_date is None:
+        if not title:
             return None
 
-        online, city = self._resolve_location(opp, plain)
+        competition = self._fetch_detail(opp.get("id"))
+        if not competition:
+            return None
+        start, end = _round_date_range(competition)
+        if start is None:
+            return None  # no authoritative date -> drop (never guess)
+        if (end or start) < today:
+            return None  # event already over
 
+        plain = _plaintext(opp.get("details"))
+        online, city = self._resolve_location(opp, plain)
         url = opp.get("short_url") or (
             f"https://unstop.com/{opp['public_url']}" if opp.get("public_url") else None
         )
-
-        # Unstop's AI-tagged "workfunction" names make good, specific topic tags
-        # (e.g. "Applied AI", "Cloud Computing", "Creative Direction").
         topics = [w.get("name") for w in (opp.get("workfunction") or []) if w.get("name")]
 
         return EventBase(
             title=title,
-            description=_strip_html(details) or "Opportunity on Unstop.",
+            description=_strip_html(opp.get("details")) or "Opportunity on Unstop.",
             type=_infer_type(title, plain),
-            date=event_date,
-            registration_deadline=deadline,
+            date=start,
+            end_date=end if (end and end != start) else None,
+            registration_deadline=None,
             city=city,
             online=online,
             source=self.name,
@@ -230,13 +209,8 @@ class UnstopSource(EventSource):
         )
 
     def _resolve_location(self, opp: dict, plain: str) -> tuple[bool, str | None]:
-        """Decide online + city from the venue and the description's 'Mode:'
-        line, because Unstop's `region` misreports hybrid hackathons.
-
-        Rules: an explicit "Mode: online" (or online region with no venue) is
-        online. Anything with a physical venue city is treated as in-person at
-        that city -- Hyderabad ones are kept, other cities get dropped by the
-        pipeline filter."""
+        """Online + city from the venue and the description's 'Mode:' line
+        (Unstop's `region` misreports hybrid hackathons)."""
         addr = opp.get("address_with_country_logo") or {}
         venue_city = (addr.get("city") or "").strip()
         region = (opp.get("region") or "").lower()
@@ -246,8 +220,6 @@ class UnstopSource(EventSource):
         online = mode == "online" or (mode is None and region == "online" and not venue_city)
         if online:
             return True, None
-
-        # In-person: use the venue city. Normalize to our label when it's ours.
         if venue_city and "hyderabad" in venue_city.lower():
             return False, self.city_label
         if not venue_city and "hyderabad" in f"{opp.get('public_url', '')} {plain}".lower():
