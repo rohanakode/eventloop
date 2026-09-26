@@ -9,6 +9,7 @@ from datetime import date, datetime, time, timezone
 
 from app.database import init_db, close_db
 from app.models.event import Event
+from app.pipeline.deduplication import dedupe_batch, find_duplicate
 from app.pipeline.filters import passes
 from app.schemas.event import EventBase
 from app.services.embeddings import embed_texts
@@ -37,17 +38,36 @@ async def delete_expired(today: date) -> int:
     return result.deleted_count if result else 0
 
 
+async def _events_on(day: date) -> list[Event]:
+    """All events stored on the same calendar day (used for cross-source dedup)."""
+    start = datetime.combine(day, time.min)
+    end = datetime.combine(day, time.max)
+    return await Event.find({"date": {"$gte": start, "$lte": end}}).to_list()
+
+
 async def _upsert(base: EventBase, embedding: list[float]) -> bool:
     """Insert a new event or update an existing one. Returns True if newly inserted."""
     key = _dedup_key(base)
-    doc = Event.from_base(base, key)
-    doc.embedding = embedding
+
+    # 1) Exact match (same source_url, or same source+title+date) -> update it.
     existing = await Event.find_one(Event.dedup_key == key)
     if existing:
-        data = doc.model_dump(exclude={"id", "created_at"})
+        data = Event.from_base(base, key).model_dump(exclude={"id", "created_at"})
+        data["embedding"] = embedding
         data["updated_at"] = datetime.now(timezone.utc)
         await existing.set(data)
         return False
+
+    # 2) Cross-source duplicate: the SAME real event may already be stored from a
+    # different source (different URL, so the exact key missed it). If a same-day
+    # fuzzy-title match exists, keep the stored one and skip inserting a copy.
+    # See pipeline/deduplication.py for how "same event" is decided.
+    if find_duplicate(base, await _events_on(base.date)) is not None:
+        return False
+
+    # 3) Genuinely new event.
+    doc = Event.from_base(base, key)
+    doc.embedding = embedding
     await doc.insert()
     return True
 
@@ -89,10 +109,11 @@ async def run_ingestion() -> dict:
         for base in kept:
             collected.setdefault(_dedup_key(base), base)  # dedup within batch
 
-    # 2. Apply total cap, embed the batch, then upsert.
+    # 2. Collapse cross-source duplicates WITHIN this run (same event listed by
+    # two sources), then apply the total cap, embed, and upsert.
     # Include type + tags in the embedded text so category-style queries
     # (e.g. "coding competition") rank the right events higher.
-    batch = list(collected.values())[:TOTAL_CAP]
+    batch = dedupe_batch(list(collected.values()))[:TOTAL_CAP]
     texts = [
         f"{b.title}. Category: {b.type}. {b.description} Topics: {', '.join(b.tags)}"
         for b in batch

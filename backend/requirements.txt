@@ -11,5 +11,6 @@ fastembed==0.5.1
 pdfplumber==0.11.4
 groq==0.15.0
 python-multipart==0.0.20
+rapidfuzz==3.10.1
 PyJWT[crypto]==2.10.1
 slowapi==0.1.9
