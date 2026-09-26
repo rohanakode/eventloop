@@ -11,6 +11,7 @@ from app.database import init_db, close_db
 from app.models.event import Event
 from app.pipeline.deduplication import dedupe_batch, find_duplicate
 from app.pipeline.filters import passes
+from app.utils.html_md import clean_description
 from app.schemas.event import EventBase
 from app.services.embeddings import embed_texts
 from app.sources.registry import get_sources
@@ -117,6 +118,13 @@ async def run_ingestion() -> dict:
     # Include type + tags in the embedded text so category-style queries
     # (e.g. "coding competition") rank the right events higher.
     batch = dedupe_batch(list(collected.values()))[:TOTAL_CAP]
+
+    # Tidy every description before storing/embedding: strip emojis, normalize
+    # dashes, drop decorative asterisks and inline registration links. Applies to
+    # all sources (current and future) in one place.
+    for b in batch:
+        b.description = clean_description(b.description, b.source_url) or b.description
+
     texts = [
         f"{b.title}. Category: {b.type}. {b.description} Topics: {', '.join(b.tags)}"
         for b in batch
