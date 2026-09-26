@@ -32,6 +32,7 @@ import httpx
 from app.schemas.event import EventBase
 from app.sources.base import EventSource
 from app.utils.dates import iso_to_ist_date
+from app.utils.html_md import html_to_markdown
 
 API_URL = "https://unstop.com/api/public/opportunity/search-result"
 DETAIL_URL = "https://unstop.com/api/public/competition/{opp_id}"
@@ -76,11 +77,6 @@ def _plaintext(details: str | None) -> str:
     except Exception:
         text = _TAG_RE.sub(" ", html.unescape(details))  # last-resort fallback
     return re.sub(r"\s+", " ", text).strip()
-
-
-def _strip_html(text: str | None, limit: int = 500) -> str:
-    plain = _plaintext(text)
-    return plain[:limit].rstrip() + ("…" if len(plain) > limit else "")
 
 
 def _infer_type(title: str, description: str) -> str:
@@ -196,7 +192,7 @@ class UnstopSource(EventSource):
 
         return EventBase(
             title=title,
-            description=_strip_html(opp.get("details")) or "Opportunity on Unstop.",
+            description=html_to_markdown(opp.get("details")) or "Opportunity on Unstop.",
             type=_infer_type(title, plain),
             date=start,
             end_date=end if (end and end != start) else None,

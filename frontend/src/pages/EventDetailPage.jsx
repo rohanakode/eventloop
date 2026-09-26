@@ -15,6 +15,7 @@ import { useToast } from "../lib/Toast";
 import AuthDialog from "../components/AuthDialog";
 import TeammateCard from "../components/TeammateCard";
 import TeammateDialog from "../components/TeammateDialog";
+import Markdown from "../components/Markdown";
 import { tokens } from "../theme";
 
 function fullDate(iso) {
@@ -295,7 +296,7 @@ export default function EventDetailPage() {
           </Stack>
 
           <Section title="About this event">
-            <Typography sx={{ color: "#4a463d", fontSize: 16, lineHeight: 1.75 }}>{event.description}</Typography>
+            <Markdown>{event.description}</Markdown>
             {event.source_url && (
               <Typography sx={{ color: tokens.muted, fontSize: 14.5, lineHeight: 1.6, mt: 2 }}>
                 This is a short preview. For the full details, dates, and to sign up, click{" "}

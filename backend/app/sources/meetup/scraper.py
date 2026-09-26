@@ -29,14 +29,19 @@ _HEADERS = {
 }
 
 
-def _clean(text: str | None, limit: int = 500) -> str:
-    """Strip Markdown formatting and collapse whitespace into clean prose."""
+def _clean(text: str | None, limit: int = 1400) -> str:
+    """Meetup descriptions are Markdown. Keep the structure (headings, bullets,
+    bold) and just normalize whitespace, so the frontend renders readable
+    sections instead of one flat paragraph."""
     if not text:
         return ""
-    text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)  # [label](url) -> label
-    text = re.sub(r"[*_`#>~]+", "", text)                 # bold/italic/heading/quote marks
-    text = re.sub(r"\s+", " ", text).strip()              # collapse whitespace
-    return text[:limit].rstrip() + ("…" if len(text) > limit else "")
+    text = text.replace("\r\n", "\n")
+    text = re.sub(r"[ \t]+", " ", text)     # collapse spaces but keep line breaks
+    text = re.sub(r"\n{3,}", "\n\n", text)  # at most one blank line
+    text = text.strip()
+    if len(text) > limit:
+        text = text[:limit].rsplit("\n", 1)[0].rstrip() + "\n\n…"
+    return text
 
 
 def _infer_type(text: str) -> EventType:
