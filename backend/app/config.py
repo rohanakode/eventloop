@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     mongodb_db: str = "eventloop"
     jina_api_key: str = ""
     groq_api_key: str = ""
-    # Supabase project URL, e.g. https://xxxx.supabase.co — used to fetch the
+    # Supabase project URL, e.g. https://xxxx.supabase.co - used to fetch the
     # JWKS for verifying tokens signed with the new asymmetric keys.
     supabase_url: str = ""
     # HS256 secret from Supabase → Project Settings → JWT Keys → Reveal JWT Secret.

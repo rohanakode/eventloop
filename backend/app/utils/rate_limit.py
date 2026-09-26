@@ -1,10 +1,10 @@
 """Per-user rate limiting for authenticated write endpoints.
 
 Uses slowapi (a FastAPI-friendly wrapper around limits). The key comes from
-the verified JWT so the limit is scoped to the actual user, not the IP —
+the verified JWT so the limit is scoped to the actual user, not the IP -
 otherwise co-workers behind one NAT would starve each other.
 
-Anonymous requests (no Authorization header) fall back to the client IP —
+Anonymous requests (no Authorization header) fall back to the client IP -
 they should be rare on protected routes but this keeps the limiter safe.
 """
 from __future__ import annotations
@@ -20,7 +20,7 @@ from app.config import settings
 
 
 def _user_key(request: Request) -> str:
-    """Prefer the Supabase user id (decoded without verifying — we're just
+    """Prefer the Supabase user id (decoded without verifying - we're just
     keying a bucket, not authenticating). Fall back to the client IP.
     """
     auth = request.headers.get("authorization") or ""

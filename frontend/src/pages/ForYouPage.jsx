@@ -4,12 +4,16 @@ import {
 } from "@mui/material";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import CheckIcon from "@mui/icons-material/Check";
+import ErrorOutlineIcon from "@mui/icons-material/ErrorOutlineOutlined";
 import { useMutation } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { matchResume } from "../api/events";
 import { useToast } from "../lib/Toast";
 import { tileFor } from "../lib/dateTile";
 import { tokens } from "../theme";
+
+const MAX_MB = 5;
+const MAX_BYTES = MAX_MB * 1024 * 1024;
 
 export default function ForYouPage() {
   const [file, setFile] = useState(null);
@@ -23,18 +27,37 @@ export default function ForYouPage() {
       if (count > 0) {
         showToast(`Matched to ${count} event${count === 1 ? "" : "s"}.`, "sparkle");
       } else {
-        showToast("No strong matches yet — check back as more events get added.", "info");
+        showToast("No strong matches yet - check back as more events get added.", "info");
       }
     },
-    onError: () => showToast("Couldn't read the resume. Try a different PDF.", "error"),
+    onError: (err) =>
+      showToast(
+        err?.response?.data?.detail || "Couldn't read the resume. Try a different PDF.",
+        "error",
+      ),
   });
   const result = mutation.data;
 
   const onFile = (f) => {
-    if (!f || f.type !== "application/pdf") return;
+    if (!f) return;
+    // Resumes only - reject anything that isn't a PDF, with visible feedback
+    // (the drag-drop path can hand us any file type, bypassing the input's accept).
+    const isPdf =
+      f.name.toLowerCase().endsWith(".pdf") &&
+      (!f.type || f.type === "application/pdf");
+    if (!isPdf) {
+      showToast("Only PDF resumes are accepted. Please upload a .pdf file.", "error");
+      if (inputRef.current) inputRef.current.value = "";
+      return;
+    }
+    if (f.size > MAX_BYTES) {
+      showToast(`That file is too large. Max ${MAX_MB} MB.`, "error");
+      if (inputRef.current) inputRef.current.value = "";
+      return;
+    }
     setFile(f);
     mutation.reset();
-    // Kick off the match immediately — no button click needed.
+    // Kick off the match immediately - no button click needed.
     mutation.mutate({ file: f });
   };
   const reset = () => {
@@ -42,30 +65,33 @@ export default function ForYouPage() {
     mutation.reset();
     if (inputRef.current) inputRef.current.value = "";
   };
+  // Clear the failed attempt and immediately open the picker to try again.
+  const chooseAnother = () => {
+    reset();
+    inputRef.current?.click();
+  };
 
   return (
     <Container maxWidth="md" sx={{ pb: 10 }}>
       {/* Hero */}
       <Box sx={{ pt: 7, pb: 4, textAlign: "center" }}>
-        <Typography variant="h1" sx={{ fontSize: { xs: 40, md: 58 }, lineHeight: 1.02, maxWidth: "18ch", mx: "auto" }}>
-          Events, matched to{" "}
-          <Box component="em" sx={{ fontStyle: "italic", fontWeight: 500, color: tokens.accent }}>
-            you.
-          </Box>
+        <Typography variant="h1" sx={{ fontSize: { xs: 40, md: 58 }, lineHeight: 1.02, maxWidth: "20ch", mx: "auto" }}>
+          Skip the events that aren't for you.
         </Typography>
         <Typography sx={{ color: tokens.muted, fontSize: 18, mt: 2.5, maxWidth: "50ch", mx: "auto", lineHeight: 1.6 }}>
-          Drop your resume. We'll read it and rank the events that actually fit.
+          Drop your resume. It reads like a recruiter would and pushes the events that fit you to the top.
         </Typography>
       </Box>
 
       {/* Dropzone */}
       <DropZone
         file={file}
+        isError={mutation.isError}
         onClear={reset}
         onFile={onFile}
         onOpen={() => inputRef.current?.click()}
       />
-      <input ref={inputRef} type="file" accept="application/pdf" hidden onChange={(e) => onFile(e.target.files?.[0])} />
+      <input ref={inputRef} type="file" accept=".pdf,application/pdf" hidden onChange={(e) => onFile(e.target.files?.[0])} />
 
       {mutation.isPending && (
         <Stack alignItems="center" sx={{ mt: 3.5 }}>
@@ -82,9 +108,19 @@ export default function ForYouPage() {
         </Typography>
       )}
       {mutation.isError && (
-        <Alert severity="error" sx={{ mt: 3 }}>
-          {mutation.error?.response?.data?.detail || "Something went wrong. Try again."}
-        </Alert>
+        <Stack alignItems="center" spacing={2} sx={{ mt: 3 }}>
+          <Alert severity="error" sx={{ width: "100%" }}>
+            {mutation.error?.response?.data?.detail || "Something went wrong. Try again."}
+          </Alert>
+          <Button
+            variant="contained"
+            startIcon={<UploadFileIcon />}
+            onClick={chooseAnother}
+            sx={{ bgcolor: tokens.accent, "&:hover": { bgcolor: tokens.accentDark } }}
+          >
+            Choose a different file
+          </Button>
+        </Stack>
       )}
 
       {result && <Results result={result} onReset={reset} />}
@@ -94,30 +130,40 @@ export default function ForYouPage() {
 
 /* ---------- Sub-components ---------- */
 
-function DropZone({ file, onFile, onClear, onOpen }) {
+function DropZone({ file, isError, onFile, onClear, onOpen }) {
   const [hover, setHover] = useState(false);
+  // A file that's selected but errored should still be re-openable by click.
+  const locked = file && !isError;
   return (
     <Box
       onDragOver={(e) => { e.preventDefault(); setHover(true); }}
       onDragLeave={() => setHover(false)}
       onDrop={(e) => { e.preventDefault(); setHover(false); onFile(e.dataTransfer.files?.[0]); }}
-      onClick={file ? undefined : onOpen}
+      onClick={locked ? undefined : onOpen}
       sx={{
         minHeight: 220,
-        border: `2px dashed ${hover ? tokens.accent : "#d8cdb8"}`,
+        border: `2px dashed ${isError ? "#e0a3a3" : hover ? tokens.accent : "#d8cdb8"}`,
         borderRadius: 4,
-        bgcolor: hover ? "#faf1e8" : tokens.paper,
+        bgcolor: isError ? "#fdf3f3" : hover ? "#faf1e8" : tokens.paper,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        cursor: file ? "default" : "pointer",
+        cursor: locked ? "default" : "pointer",
         transition: ".18s",
         px: 3,
         boxShadow: tokens.shadow,
-        "&:hover": file ? {} : { borderColor: tokens.accent, bgcolor: "#faf1e8" },
+        "&:hover": locked ? {} : { borderColor: isError ? "#c94f4f" : tokens.accent, bgcolor: isError ? "#fbeaea" : "#faf1e8" },
       }}
     >
-      {file ? (
+      {file && isError ? (
+        <Stack alignItems="center" spacing={1.5}>
+          <Box sx={{ width: 54, height: 54, borderRadius: 2, bgcolor: "#fce9e9", color: "#c94f4f", display: "grid", placeItems: "center" }}>
+            <ErrorOutlineIcon sx={{ fontSize: 28 }} />
+          </Box>
+          <Typography sx={{ fontFamily: tokens.serif, fontWeight: 600, fontSize: 18 }}>{file.name}</Typography>
+          <Typography sx={{ fontSize: 13, color: "#c94f4f" }}>Couldn't use this file - click to choose another</Typography>
+        </Stack>
+      ) : file ? (
         <Stack alignItems="center" spacing={1.5}>
           <Box sx={{ width: 54, height: 54, borderRadius: 2, bgcolor: tokens.accentSoft, color: tokens.accentDark, display: "grid", placeItems: "center" }}>
             <CheckIcon sx={{ fontSize: 28 }} />
@@ -255,7 +301,7 @@ function MatchRow({ match }) {
             {reason}
           </Typography>
           <Stack direction="row" spacing={2} sx={{ color: tokens.muted, fontSize: 13.5, fontWeight: 500 }}>
-            <span>{event.online ? "Online" : (event.city || "—")}</span>
+            <span>{event.online ? "Online" : (event.city || "-")}</span>
             <span>via {event.source}</span>
           </Stack>
         </Box>

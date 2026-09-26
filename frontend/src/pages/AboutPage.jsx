@@ -50,6 +50,37 @@ export default function AboutPage() {
       {/* The story */}
       <Stack spacing={3} sx={{ fontSize: 16.5, color: "#4a463d", lineHeight: 1.75, maxWidth: "62ch" }}>
         <Typography sx={{ fontFamily: tokens.serif, fontWeight: 600, fontSize: 22, color: tokens.ink }}>
+          What EventLoop is
+        </Typography>
+        <Typography>
+          EventLoop is a single, up-to-date feed for hackathons and tech meetups in Hyderabad. Instead of checking Devfolio, Meetup, WhatsApp groups, and Twitter one by one, you get everything happening this week in one place - with the details you actually need to decide whether to show up.
+        </Typography>
+
+        <Typography sx={{ fontFamily: tokens.serif, fontWeight: 600, fontSize: 22, color: tokens.ink, mt: 2 }}>
+          What it does
+        </Typography>
+        <Typography component="div">
+          <Box component="ul" sx={{ pl: 3, m: 0, "& li": { mb: 0.9 } }}>
+            <li>Pulls hackathons and meetups from Devfolio, Meetup, and a couple of smaller sources into one feed you can actually filter.</li>
+            <li>Reads your resume and floats the events that fit to the top. Upload once, that's it.</li>
+            <li>Hosting something yourself? Post it in a minute and it lands in the same feed as everything else.</li>
+            <li>A teammate board on every hackathon, plus a global "looking for a team" wall.</li>
+          </Box>
+        </Typography>
+
+        <Typography sx={{ fontFamily: tokens.serif, fontWeight: 600, fontSize: 22, color: tokens.ink, mt: 2 }}>
+          How it works
+        </Typography>
+        <Typography component="div">
+          <Box component="ol" sx={{ pl: 3, m: 0, "& li": { mb: 0.75 } }}>
+            <li>Scrapers pull fresh listings from Devfolio, Meetup, and other sources on a daily schedule, then normalize them into one format.</li>
+            <li>Community hosts add events directly - anyone signed in can post, and listings show up in the same feed.</li>
+            <li>When you upload a resume, it's read in memory and distilled into a short profile (headline, skills, interests) that's compared against upcoming events to surface your best 6–8 matches. The PDF is discarded immediately, never stored.</li>
+            <li>Sign-in and accounts are handled by Supabase; teammate posts and your own events are tied to that account.</li>
+          </Box>
+        </Typography>
+
+        <Typography sx={{ fontFamily: tokens.serif, fontWeight: 600, fontSize: 22, color: tokens.ink, mt: 2 }}>
           Why this exists
         </Typography>
         <Typography>
@@ -102,53 +133,15 @@ export default function AboutPage() {
         </Button>
       </Stack>
 
-      {/* Legal — Terms + Privacy */}
-      <Box sx={{ mt: 10, pt: 5, borderTop: `1px solid ${tokens.line}` }}>
-        <Typography sx={{ fontSize: 12, fontWeight: 600, color: tokens.muted, letterSpacing: "0.4px", textTransform: "uppercase", mb: 3 }}>
-          The fine print
+      {/* Legal - moved to its own page, linked here */}
+      <Box sx={{ mt: 8, pt: 4, borderTop: `1px solid ${tokens.line}` }}>
+        <Typography sx={{ fontSize: 14.5, color: tokens.muted }}>
+          The boring-but-important stuff - how EventLoop handles your data and what to know before showing up to an event - lives on the{" "}
+          <Box component={Link} to="/legal" sx={{ color: tokens.accent, textDecoration: "none", fontWeight: 600, "&:hover": { textDecoration: "underline" } }}>
+            Terms &amp; Privacy
+          </Box>{" "}
+          page.
         </Typography>
-
-        <Stack spacing={4} sx={{ color: tokens.muted, fontSize: 14.5, lineHeight: 1.7, maxWidth: "62ch" }}>
-          <Box>
-            <Typography sx={{ fontFamily: tokens.serif, fontWeight: 600, fontSize: 18, color: tokens.ink, mb: 1.25 }}>
-              Terms
-            </Typography>
-            <Typography sx={{ fontSize: 14.5, color: tokens.muted, mb: 1 }}>
-              EventLoop aggregates event details from third-party sites (Devfolio, Meetup, others) and lets community members post their own. Details can be outdated, incorrect, or changed after posting. <b style={{ color: tokens.ink }}>Confirm dates, location, and registration on the source site before showing up.</b>
-            </Typography>
-            <Typography sx={{ fontSize: 14.5, color: tokens.muted, mb: 1 }}>
-              User-posted events are the responsibility of whoever posted them. EventLoop reviews for obvious spam but doesn't verify events or vet hosts. Posting an event you don't own, or that violates the source's terms, may get the account removed.
-            </Typography>
-            <Typography sx={{ fontSize: 14.5, color: tokens.muted }}>
-              The site is offered as-is, no warranties, no guarantee of uptime. It's a side project.
-            </Typography>
-          </Box>
-
-          <Box>
-            <Typography sx={{ fontFamily: tokens.serif, fontWeight: 600, fontSize: 18, color: tokens.ink, mb: 1.25 }}>
-              Privacy
-            </Typography>
-            <Typography sx={{ fontSize: 14.5, color: tokens.muted, mb: 1 }}>
-              If you sign up, EventLoop stores your email and the display name you enter. Auth is handled by Supabase. Nothing else.
-            </Typography>
-            <Typography sx={{ fontSize: 14.5, color: tokens.muted, mb: 1 }}>
-              Resumes uploaded for matching are read in memory, distilled to a short profile (headline, skills, interests), and immediately discarded. The PDF itself is never written to disk.
-            </Typography>
-            <Typography sx={{ fontSize: 14.5, color: tokens.muted, mb: 1 }}>
-              No third-party analytics, no ad trackers, no cookies beyond what Supabase sets to keep you signed in.
-            </Typography>
-            <Typography sx={{ fontSize: 14.5, color: tokens.muted }}>
-              You can delete your account any time from the header dropdown. Deletion wipes your events, teammate posts, and auth record.
-            </Typography>
-          </Box>
-
-          <Typography sx={{ fontSize: 12.5, color: tokens.muted, pt: 1 }}>
-            Questions or objections?{" "}
-            <Box component="a" href="mailto:rohanakode12@gmail.com" sx={{ color: tokens.accent, textDecoration: "none", "&:hover": { textDecoration: "underline" } }}>
-              rohanakode12@gmail.com
-            </Box>
-          </Typography>
-        </Stack>
       </Box>
     </Container>
   );

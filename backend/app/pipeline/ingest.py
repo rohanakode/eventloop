@@ -105,7 +105,7 @@ async def run_ingestion() -> dict:
         else:
             updated += 1
 
-    # 3. Remove events a (successful) source no longer lists — per source only.
+    # 3. Remove events a (successful) source no longer lists - per source only.
     removed_stale = 0
     for source_name, seen in seen_by_source.items():
         removed_stale += await _remove_unseen(source_name, seen)

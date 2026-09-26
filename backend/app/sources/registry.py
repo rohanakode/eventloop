@@ -1,6 +1,6 @@
 """The list of active event sources the pipeline pulls from.
 
-Add a new source by importing it and adding an instance here — nothing else
+Add a new source by importing it and adding an instance here - nothing else
 in the pipeline needs to change.
 """
 from app.sources.base import EventSource

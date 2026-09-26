@@ -7,7 +7,7 @@ const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov
 // - Multi-day, same month  →  { day: "24–26", mon: "Oct" }
 // - Multi-day, cross-month  →  { day: "24 Oct", mon: "→ 3 Nov" }
 export function tileFor(startIso, endIso) {
-  if (!startIso) return { day: "—", mon: "—", isRange: false };
+  if (!startIso) return { day: "-", mon: "-", isRange: false };
   const [sy, sm, sd] = startIso.split("-").map(Number);
   const startDay = String(sd).padStart(2, "0");
   const startMon = MONTHS[sm - 1];

@@ -1,4 +1,4 @@
-"""EventLoop API — FastAPI entry point."""
+"""EventLoop API - FastAPI entry point."""
 import logging
 import traceback
 from contextlib import asynccontextmanager

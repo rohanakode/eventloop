@@ -1,6 +1,6 @@
 import { createTheme } from "@mui/material/styles";
 
-// Editorial design tokens — shared across components for a consistent look.
+// Editorial design tokens - shared across components for a consistent look.
 export const tokens = {
   accent: "#cf4d24",
   accentDark: "#a83a17",

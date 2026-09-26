@@ -19,5 +19,5 @@ def iso_to_ist_date(value: str | None) -> date | None:
     except ValueError:
         return None
     if dt.tzinfo is None:
-        return dt.date()  # already local/naive — take as-is
+        return dt.date()  # already local/naive - take as-is
     return dt.astimezone(IST).date()

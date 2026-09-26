@@ -58,7 +58,7 @@ export default function TeammateCard({ post, showEvent = true, onDelete, canDele
                 {post.event_title}
               </Typography>
               <Typography sx={{ fontSize: 12.5, color: tokens.muted, mt: 0.25 }}>
-                {post.event_online ? "Online" : (post.event_city || "—")}
+                {post.event_online ? "Online" : (post.event_city || "-")}
               </Typography>
             </Box>
           )}

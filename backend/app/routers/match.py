@@ -18,6 +18,7 @@ router = APIRouter(prefix="/match", tags=["match"])
 
 VECTOR_INDEX = "vector_index"
 MAX_PDF_BYTES = 5 * 1024 * 1024  # 5 MB
+PDF_MAGIC = b"%PDF-"  # Every valid PDF starts with this signature.
 
 
 @router.post("/resume", response_model=MatchResponse)
@@ -34,9 +35,31 @@ async def match_resume(
     # 1. Get the profile (from resume if provided, else empty)
     profile_dict: dict = {"headline": "", "skills": [], "interests": [], "stage": "unknown", "goal": ""}
     if resume is not None:
+        # Only accept PDF resumes. The filename/content-type are client-supplied
+        # and spoofable, so the PDF magic-byte signature is the authoritative
+        # check - anything else (docx, images, archives, etc.) is rejected.
+        filename = (resume.filename or "").lower()
+        if not filename.endswith(".pdf") or (
+            resume.content_type and resume.content_type != "application/pdf"
+        ):
+            raise HTTPException(
+                status_code=415,
+                detail="Only PDF resumes are accepted. Please upload a .pdf file.",
+            )
+
+        # Reject oversized files early - before pulling the whole thing into
+        # memory - using the size the upload already advertises when available.
+        if resume.size is not None and resume.size > MAX_PDF_BYTES:
+            raise HTTPException(status_code=413, detail="Resume file too large (max 5 MB).")
+
         data = await resume.read()
         if len(data) > MAX_PDF_BYTES:
             raise HTTPException(status_code=413, detail="Resume file too large (max 5 MB).")
+        if not data.startswith(PDF_MAGIC):
+            raise HTTPException(
+                status_code=415,
+                detail="That file isn't a valid PDF. Please upload a PDF resume.",
+            )
         try:
             text = extract_text(data)
         except Exception:
@@ -44,6 +67,16 @@ async def match_resume(
         if not text.strip():
             raise HTTPException(status_code=400, detail="No text could be extracted from the PDF.")
         profile_dict = extract_profile(text)
+
+        # AI check: the PDF is valid, but is it actually a resume? Reject
+        # invoices, essays, certificates, marksheets, etc. before matching.
+        is_resume = profile_dict.pop("is_resume", True)
+        not_resume_reason = profile_dict.pop("not_resume_reason", "")
+        if not is_resume:
+            detail = "This PDF doesn't look like a resume. Please upload your resume/CV."
+            if not_resume_reason:
+                detail = f"This PDF doesn't look like a resume ({not_resume_reason.rstrip('.').lower()}). Please upload your resume/CV."
+            raise HTTPException(status_code=422, detail=detail)
 
     # 2. Build query text + embed
     query_text = build_query(profile_dict, intent)

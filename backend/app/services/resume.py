@@ -1,6 +1,6 @@
 """Resume text extraction + skills/goals extraction via Groq.
 
-Kept small and self-contained: no storage — the resume is processed in-memory
+Kept small and self-contained: no storage - the resume is processed in-memory
 and only the distilled profile leaves this function.
 """
 from __future__ import annotations
@@ -18,7 +18,7 @@ from app.config import settings
 
 GROQ_MODEL = "openai/gpt-oss-120b"
 
-# Stages we accept — ordered from least to most experience. Anything else is
+# Stages we accept - ordered from least to most experience. Anything else is
 # normalized down to the closest match (or "professional" as a safe default).
 VALID_STAGES = {"student", "intern", "fresher", "junior", "mid", "senior", "professional"}
 
@@ -58,29 +58,38 @@ def extract_profile(resume_text: str) -> dict:
     prompt = (
         "You extract a structured profile from a resume for an event-matching site "
         "(hackathons, meetups, workshops, conferences). The site serves anyone "
-        "interested in tech events — students, interns, freshers, and working "
+        "interested in tech events - students, interns, freshers, and working "
         f"professionals alike. Today's date is {today}.\n\n"
+        "FIRST, decide whether this document is actually a resume/CV (a personal "
+        "professional profile with sections like experience, education, skills, "
+        "projects, or contact details). Documents that are NOT resumes include: "
+        "invoices, receipts, essays, articles, reports, cover letters on their own, "
+        "certificates, forms, question papers, marksheets, random text, or blank "
+        "pages. Be strict - a cover letter alone or an academic paper is NOT a resume.\n\n"
         "Read the ENTIRE resume before deciding the stage. Look at graduation "
         "dates, internship/job date ranges, and titles. A person who has already "
         "graduated or already completed internships is NOT a student anymore, "
         "even if their degree section is prominent.\n\n"
         "Return JSON with these keys:\n"
+        "- is_resume: boolean - true only if this document is genuinely a resume/CV.\n"
+        "- not_resume_reason: if is_resume is false, one short sentence saying what "
+        "  the document looks like instead (else empty string).\n"
         "- headline: one-line role summary, max 12 words. Reflect their ACTUAL "
         "  strongest identity (e.g. 'Full-Stack AI Engineer with Cloud & MERN "
         "  expertise'), not just their degree.\n"
         "- skills: 5-10 concrete technical skills/tools they've actually used.\n"
         "- interests: 3-6 broader interest areas (e.g. 'GenAI', 'startups', 'web dev').\n"
         "- stage: pick EXACTLY ONE, based on real experience relative to today:\n"
-        "    * 'student'      — currently enrolled, no internship or job experience yet.\n"
-        "    * 'intern'       — currently in an internship, or only internship experience so far.\n"
-        "    * 'fresher'      — graduated within the last ~12 months and looking for their first full-time role,\n"
+        "    * 'student'      - currently enrolled, no internship or job experience yet.\n"
+        "    * 'intern'       - currently in an internship, or only internship experience so far.\n"
+        "    * 'fresher'      - graduated within the last ~12 months and looking for their first full-time role,\n"
         "                        OR has finished internships but not yet started a full-time role.\n"
-        "    * 'junior'       — 0-2 years of full-time professional experience.\n"
-        "    * 'mid'          — 3-6 years of full-time professional experience.\n"
-        "    * 'senior'       — 7+ years, or clear leadership/staff/principal titles.\n"
-        "    * 'professional' — clearly working in industry but seniority is unclear.\n"
+        "    * 'junior'       - 0-2 years of full-time professional experience.\n"
+        "    * 'mid'          - 3-6 years of full-time professional experience.\n"
+        "    * 'senior'       - 7+ years, or clear leadership/staff/principal titles.\n"
+        "    * 'professional' - clearly working in industry but seniority is unclear.\n"
         "  Do the date math against today's date. If graduation year is <= this year and they have finished internships, they are NOT a student.\n"
-        "- goal: one short line — what they're likely looking for next.\n\n"
+        "- goal: one short line - what they're likely looking for next.\n\n"
         "Return ONLY the JSON object, no prose.\n\n"
         f"Resume:\n{resume_text[:6000]}"
     )
@@ -99,6 +108,8 @@ def extract_profile(resume_text: str) -> dict:
         # gets corrected when the resume clearly shows completed experience.
         stage = _reconcile_stage(stage, resume_text)
         return {
+            "is_resume": bool(data.get("is_resume", True)),
+            "not_resume_reason": str(data.get("not_resume_reason", "")).strip(),
             "headline": str(data.get("headline", "")).strip(),
             "skills": [str(s).strip() for s in (data.get("skills") or []) if str(s).strip()][:10],
             "interests": [str(s).strip() for s in (data.get("interests") or []) if str(s).strip()][:6],
@@ -111,7 +122,7 @@ def extract_profile(resume_text: str) -> dict:
 
 def _reconcile_stage(stage: str, resume_text: str) -> str:
     """Guard against an over-eager 'student' label when the resume actually shows
-    completed work. We only DOWNGRADE the studenthood — we never override a
+    completed work. We only DOWNGRADE the studenthood - we never override a
     higher label the LLM already picked."""
     if stage not in {"student", "unknown", ""}:
         return stage
@@ -145,8 +156,23 @@ def _reconcile_stage(stage: str, resume_text: str) -> str:
     return stage or "unknown"
 
 
+def _looks_like_resume(text: str) -> bool:
+    """Keyword heuristic used only when Groq is unavailable - errs toward
+    accepting, so we never hard-block a real resume just because the LLM is
+    down. Requires a couple of the section words a resume almost always has."""
+    t = text.lower()
+    signals = [
+        "experience", "education", "skills", "projects", "internship",
+        "work experience", "certification", "achievements", "summary",
+        "objective", "curriculum vitae", "resume", "employment", "bachelor",
+        "master", "b.tech", "b.e", "linkedin", "github",
+    ]
+    hits = sum(1 for s in signals if s in t)
+    return hits >= 2
+
+
 def _heuristic_profile(text: str) -> dict:
-    """Fallback profile when Groq is unavailable — very basic keyword pass."""
+    """Fallback profile when Groq is unavailable - very basic keyword pass."""
     known = [
         "python", "javascript", "typescript", "react", "node", "next", "django",
         "flask", "fastapi", "express", "mongodb", "postgres", "sql", "aws", "docker",
@@ -159,6 +185,8 @@ def _heuristic_profile(text: str) -> dict:
     # graduated intern as a student either.
     stage = _reconcile_stage("student" if "student" in t else "unknown", text)
     return {
+        "is_resume": _looks_like_resume(text),
+        "not_resume_reason": "" if _looks_like_resume(text) else "This doesn't look like a resume.",
         "headline": "Developer" if skills else "Professional",
         "skills": skills,
         "interests": [],
@@ -195,7 +223,7 @@ def why_matches(event_text: str, event_type: str, profile: dict, intent: str | N
 
     - If the event mentions any of your skills/interests → name them.
     - Otherwise, when we have a resume profile, still surface WHY this fits
-      YOU (e.g. "A hackathon — great for a Full-Stack + AI developer").
+      YOU (e.g. "A hackathon - great for a Full-Stack + AI developer").
     - Only fall back to a plain category line if we have no profile at all.
     """
     text = event_text.lower()
@@ -217,7 +245,7 @@ def why_matches(event_text: str, event_type: str, profile: dict, intent: str | N
     if hits:
         return "Matches your " + ", ".join(hits)
 
-    # No direct term overlap — surface a profile-aware reason if we can.
+    # No direct term overlap - surface a profile-aware reason if we can.
     headline = (profile.get("headline") or "").strip()
     interests = profile.get("interests") or []
     skills = profile.get("skills") or []
@@ -227,7 +255,7 @@ def why_matches(event_text: str, event_type: str, profile: dict, intent: str | N
     if interests:
         return f"Fits your interests in {', '.join(interests[:2])}"
     if skills:
-        return f"Fits your {event_type} interest — matches your {', '.join(skills[:2])} background"
+        return f"Fits your {event_type} interest - matches your {', '.join(skills[:2])} background"
     if intent and intent.strip():
         return f"Fits your {event_type} interest"
     return "Relevant to your background"

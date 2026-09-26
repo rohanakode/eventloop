@@ -68,7 +68,7 @@ const maxFutureDate = () => {
 };
 
 // A DatePicker that speaks our form's YYYY-MM-DD string format.
-// Manual typing is disabled — the entire field is click-to-open, and the
+// Manual typing is disabled - the entire field is click-to-open, and the
 // only way to change the value is via the calendar popup.
 function DateField({ label, value, onChange, onBlur, min, max, error }) {
   const [open, setOpen] = useState(false);
@@ -124,7 +124,7 @@ function formFromEvent(e) {
 }
 
 // Turn an axios error into a printable string. FastAPI's validation errors
-// arrive as { detail: [{loc, msg, type, input}] } — rendering that array
+// arrive as { detail: [{loc, msg, type, input}] } - rendering that array
 // directly crashes React, so we flatten each entry into "field: msg".
 function formatApiError(error, fallback) {
   if (!error) return "";
@@ -240,7 +240,7 @@ export default function PostEventPage() {
     );
   }
 
-  // Signed in: show tabs. Stay on "My posts" even when empty — the empty
+  // Signed in: show tabs. Stay on "My posts" even when empty - the empty
   // state itself invites them to post.
   const events = myPosts.data || [];
 
@@ -434,7 +434,7 @@ function MyPostsList({ events, loading, onNew, onEdit }) {
                   {e.title}
                 </Typography>
                 <Typography sx={{ color: tokens.muted, fontSize: 13, mt: 0.5 }}>
-                  {e.online ? "Online" : (e.city || "—")}
+                  {e.online ? "Online" : (e.city || "-")}
                 </Typography>
               </Box>
               <IconButton

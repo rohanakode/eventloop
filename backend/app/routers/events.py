@@ -1,4 +1,4 @@
-"""Events endpoints — read from MongoDB (Atlas)."""
+"""Events endpoints - read from MongoDB (Atlas)."""
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -64,7 +64,7 @@ async def create_event(
     try:
         vector = embed_texts([embed_text])[0]
     except Exception:
-        raise HTTPException(status_code=502, detail="Could not embed the event right now — try again.")
+        raise HTTPException(status_code=502, detail="Could not embed the event right now - try again.")
 
     doc = Event.from_base(base, dedup_key)
     doc.embedding = vector
@@ -159,7 +159,7 @@ async def update_event(
         try:
             event.embedding = embed_texts([embed_text])[0]
         except Exception:
-            raise HTTPException(status_code=502, detail="Could not re-embed the event — try again.")
+            raise HTTPException(status_code=502, detail="Could not re-embed the event - try again.")
 
     # Refresh the stored display name from the current token so a user who
     # renamed themselves in Supabase gets the new name on their events.
@@ -215,7 +215,7 @@ async def search_events(
     q: str = Query(..., min_length=1, max_length=200, description="Natural-language search query"),
     type: Optional[EventType] = Query(None, description="Optional category filter"),
 ):
-    """Semantic search — ranks events by meaning, not exact keywords."""
+    """Semantic search - ranks events by meaning, not exact keywords."""
     events = await semantic_search(q, type=type)
     return [_to_out(e) for e in events]
 

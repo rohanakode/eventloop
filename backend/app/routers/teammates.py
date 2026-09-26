@@ -1,4 +1,4 @@
-"""Teammate-finding endpoints — per-event board + global feed."""
+"""Teammate-finding endpoints - per-event board + global feed."""
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -75,7 +75,7 @@ async def list_teammates(
     city: Optional[str] = Query(None, max_length=80, description="Filter by city"),
     online: Optional[bool] = Query(None, description="Filter online / in-person"),
 ):
-    """Global feed — every user actively looking, newest first. Optional filters."""
+    """Global feed - every user actively looking, newest first. Optional filters."""
     query: dict = {}
     if type:
         query["event_type"] = type

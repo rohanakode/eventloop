@@ -67,7 +67,7 @@ class EventBase(BaseModel):
 
 
 class UserEventCreate(BaseModel):
-    """Input schema for POST /events — the payload a signed-in user submits.
+    """Input schema for POST /events - the payload a signed-in user submits.
 
     Stricter than EventBase because we control this surface end-to-end:
     - lengths capped so the feed stays legible and the DB doesn't bloat,
@@ -86,7 +86,7 @@ class UserEventCreate(BaseModel):
     registration_deadline: Optional[_date] = None
     city: Annotated[Optional[str], Field(max_length=80)] = None
     online: bool = False
-    # Registration link is required — an event without one has nowhere for attendees to sign up.
+    # Registration link is required - an event without one has nowhere for attendees to sign up.
     source_url: Annotated[HttpUrl, Field(max_length=URL_MAX)]
     tags: Annotated[
         list[Annotated[str, Field(min_length=1, max_length=30)]],
@@ -140,7 +140,7 @@ class UserEventCreate(BaseModel):
         cleaned = _clean_tags(self.tags)
         if len(cleaned) > 6:
             raise ValueError("At most 6 tags.")
-        # `_clean_tags` may produce a shorter list than what was submitted —
+        # `_clean_tags` may produce a shorter list than what was submitted -
         # copy that back onto the model so downstream reads see it.
         object.__setattr__(self, "tags", cleaned)
         return self
@@ -214,6 +214,6 @@ class UserEventUpdate(BaseModel):
 
 class EventOut(EventBase):
     id: str
-    # Poster identifiers — only populated for user-posted (native) events.
+    # Poster identifiers - only populated for user-posted (native) events.
     user_id: Optional[str] = None
     user_name: Optional[str] = None

@@ -7,7 +7,7 @@ import { tokens } from "../theme";
 
 const ToastCtx = createContext(null);
 
-// Editorial toast — cream card, accent icon, ink text. Slides up from the
+// Editorial toast - cream card, accent icon, ink text. Slides up from the
 // bottom-center. Call `showToast("...")` for a plain success toast, or
 // `showToast("...", "error"|"info"|"sparkle")` for a themed variant.
 export function ToastProvider({ children }) {

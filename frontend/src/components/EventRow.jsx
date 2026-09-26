@@ -47,7 +47,7 @@ export default function EventRow({ event }) {
         </Typography>
         <Stack direction="row" spacing={2.25} sx={{ color: tokens.muted, fontSize: 14, fontWeight: 500 }}>
           <Stack direction="row" alignItems="center" spacing={0.75}>
-            <span>{event.online ? "Online" : event.city || "—"}</span>
+            <span>{event.online ? "Online" : event.city || "-"}</span>
           </Stack>
         </Stack>
       </Box>

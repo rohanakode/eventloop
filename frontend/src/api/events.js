@@ -16,7 +16,7 @@ export async function getEvent(id) {
   return data;
 }
 
-// Semantic search — ranks events by meaning.
+// Semantic search - ranks events by meaning.
 export async function searchEvents(q, type) {
   const params = { q };
   if (type) params.type = type;
@@ -36,7 +36,7 @@ export async function getMyEvents() {
   return data;
 }
 
-// Edit an event you posted. Payload is partial — only send what changed.
+// Edit an event you posted. Payload is partial - only send what changed.
 export async function updateEvent({ id, ...patch }) {
   const { data } = await api.patch(`/events/${id}`, patch);
   return data;

@@ -1,4 +1,4 @@
-"""Account management — currently just self-serve deletion.
+"""Account management - currently just self-serve deletion.
 
 Deleting an account removes the user's events from MongoDB AND removes the
 user record from Supabase Auth. The Supabase delete uses the admin API,
@@ -27,7 +27,7 @@ async def delete_account(user: CurrentUser = Depends(require_user)):
             detail="Account deletion is not configured on the server.",
         )
 
-    # 1) Wipe everything this user owns in our DB — events + teammate posts.
+    # 1) Wipe everything this user owns in our DB - events + teammate posts.
     await Event.find(Event.user_id == user.id).delete()
     await TeammateInterest.find(TeammateInterest.user_id == user.id).delete()
 

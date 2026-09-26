@@ -27,7 +27,7 @@ class TeammateInterest(Document):
     # Which event they're looking for teammates for.
     event_id: str
 
-    # Denormalized snapshot from the event at post time — makes the global
+    # Denormalized snapshot from the event at post time - makes the global
     # /teammates listing cheap to render without a lookup.
     event_title: str
     event_type: str

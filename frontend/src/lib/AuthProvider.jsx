@@ -16,7 +16,7 @@ export function AuthProvider({ children }) {
     });
     const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s);
-      // Only wipe the cache on an actual sign-out — not on the initial
+      // Only wipe the cache on an actual sign-out - not on the initial
       // "no session" event a signed-out user sees on page load, otherwise
       // in-flight queries get their results dropped on the floor.
       if (event === "SIGNED_OUT") queryClient.clear();

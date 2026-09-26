@@ -27,4 +27,4 @@ class MatchResponse(BaseModel):
     profile: Profile       # what we understood from the resume
     intent: str | None = None
     matches: list[MatchedEvent]        # flat top-N (kept for compatibility)
-    groups: list[MatchGroup] = []      # top matches per category — for a balanced feed
+    groups: list[MatchGroup] = []      # top matches per category - for a balanced feed

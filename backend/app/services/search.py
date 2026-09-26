@@ -43,7 +43,7 @@ _cat_vecs: Optional[dict] = None
 
 
 def _detect_by_keyword(query: str) -> Optional[str]:
-    """Explicit category detection — tolerant to typos/plural via edit distance
+    """Explicit category detection - tolerant to typos/plural via edit distance
     on each word of the query."""
     q_words = [w for w in re.split(r"[^a-z]+", query.lower()) if len(w) >= 4]
     for cat, words in CATEGORY_KEYWORDS.items():
@@ -142,6 +142,6 @@ async def semantic_search(query: str, limit: int = 25, type: Optional[str] = Non
     try:
         return await _vector_search(query, limit, type)
     except Exception:
-        # Embedding/vector failure (e.g. Jina outage/quota) — degrade to
+        # Embedding/vector failure (e.g. Jina outage/quota) - degrade to
         # keyword search, which needs no embeddings, instead of erroring.
         return await _text_search(query, limit, type)

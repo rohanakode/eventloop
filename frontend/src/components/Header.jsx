@@ -111,7 +111,7 @@ export default function Header() {
             })}
           </Stack>
 
-          {/* Hamburger — only on xs / sm */}
+          {/* Hamburger - only on xs / sm */}
           <IconButton
             onClick={() => setDrawerOpen(true)}
             sx={{ display: { xs: "inline-flex", md: "none" }, ml: "auto", color: tokens.ink }}
@@ -174,6 +174,10 @@ export default function Header() {
                 </MenuItem>
                 <MenuItem onClick={async () => { setAnchor(null); await doSignOut(); }} sx={{ fontSize: 14 }}>
                   Sign out
+                </MenuItem>
+                <Divider sx={{ my: 0.5 }} />
+                <MenuItem component={Link} to="/legal" onClick={() => setAnchor(null)} sx={{ fontSize: 14, color: tokens.muted }}>
+                  Terms &amp; Privacy
                 </MenuItem>
                 <Divider sx={{ my: 0.5 }} />
                 <MenuItem
@@ -248,7 +252,26 @@ export default function Header() {
             })}
           </Stack>
 
-          <Box sx={{ mt: "auto", px: 2.5, py: 2.5, borderTop: `1px solid ${tokens.line}` }}>
+          <Stack direction="row" spacing={3} sx={{ mt: "auto", px: 2.5, pb: 1.5 }}>
+            <Box
+              component={Link}
+              to="/legal#terms"
+              onClick={() => setDrawerOpen(false)}
+              sx={{ fontSize: 13.5, color: tokens.muted, textDecoration: "none", "&:hover": { color: tokens.ink } }}
+            >
+              Terms
+            </Box>
+            <Box
+              component={Link}
+              to="/legal#privacy"
+              onClick={() => setDrawerOpen(false)}
+              sx={{ fontSize: 13.5, color: tokens.muted, textDecoration: "none", "&:hover": { color: tokens.ink } }}
+            >
+              Privacy
+            </Box>
+          </Stack>
+
+          <Box sx={{ px: 2.5, py: 2.5, borderTop: `1px solid ${tokens.line}` }}>
             {user ? (
               <Stack spacing={1}>
                 <Button

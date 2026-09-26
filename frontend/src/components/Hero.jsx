@@ -17,14 +17,14 @@ export default function Hero({ value, onSearch }) {
   return (
     <Box sx={{ pt: 7.5, pb: 2.5, textAlign: "center" }}>
       <Typography variant="h1" sx={{ fontSize: { xs: 42, md: 64, lg: 72 }, lineHeight: 1.02, maxWidth: "30ch", mx: "auto" }}>
-        Every Hyderabad tech event,{" "}
+        Hyderabad's tech events,{" "}
         <Box component="em" sx={{ fontStyle: "italic", fontWeight: 500, color: tokens.accent }}>
           in one place.
         </Box>
       </Typography>
 
       <Typography sx={{ color: tokens.muted, fontSize: { xs: 17, md: 19 }, mt: 2.5, maxWidth: "68ch", mx: "auto", lineHeight: 1.6 }}>
-        Hackathons, meetups, workshops, startup nights. Aggregated from multiple sources and posted by community hosts.
+        Hackathons, meetups, workshops, startup nights. Aggregated from multiple sources, plus events community hosts post themselves.
       </Typography>
 
       {/* Search */}

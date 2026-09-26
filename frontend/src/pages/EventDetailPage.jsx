@@ -169,7 +169,7 @@ export default function EventDetailPage() {
         await navigator.share({ title, url });
         return; // shared successfully
       } catch (err) {
-        // AbortError = user dismissed the sheet — don't show anything.
+        // AbortError = user dismissed the sheet - don't show anything.
         if (err?.name === "AbortError") return;
         // Anything else → fall through to clipboard copy below.
       }
@@ -266,27 +266,18 @@ export default function EventDetailPage() {
         </Box>
       </Stack>
 
-      {/* Banner */}
-      <Box
-        sx={{
-          height: 240,
-          borderRadius: 3,
-          background: `radial-gradient(130% 130% at 18% 0%, ${catColor} 0%, #241a12 100%)`,
-          position: "relative",
-          overflow: "hidden",
-          boxShadow: tokens.shadow,
-        }}
-      >
-        <Chip label={event.type} sx={{ position: "absolute", top: 20, left: 22, bgcolor: "rgba(0,0,0,.25)", color: "#fff", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".5px", fontSize: 12 }} />
-        <Box sx={{ position: "absolute", top: 20, right: 22, bgcolor: "rgba(255,255,255,.18)", color: "#fff", fontSize: 13, fontWeight: 600, px: 1.75, py: 0.75, borderRadius: 100, backdropFilter: "blur(6px)" }}>
-          via {event.source}
-        </Box>
-      </Box>
-
       {/* Two-column layout */}
-      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 340px" }, gap: 5, mt: 4, alignItems: "start" }}>
+      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 340px" }, gap: 5, mt: 1, alignItems: "start" }}>
         {/* Main */}
         <Box>
+          {/* Category + source — quiet, typographic (replaces the old color banner) */}
+          <Stack direction="row" alignItems="center" spacing={1.25} sx={{ mb: 2 }}>
+            <Box sx={{ width: 9, height: 9, borderRadius: "50%", bgcolor: catColor, flexShrink: 0, position: "relative", top: "1px" }} />
+            <Typography sx={{ fontSize: 12.5, fontWeight: 600, letterSpacing: ".5px", textTransform: "uppercase", color: tokens.ink, lineHeight: 1 }}>
+              {event.type}
+            </Typography>
+            <Typography sx={{ fontSize: 13.5, color: tokens.muted, lineHeight: 1 }}>· via {event.source}</Typography>
+          </Stack>
           <Stack direction="row" alignItems="flex-start" justifyContent="space-between" spacing={2} sx={{ mb: 4 }}>
             <Typography variant="h1" sx={{ fontSize: { xs: 32, md: 42 }, lineHeight: 1.05, flex: 1 }}>
               {event.title}
@@ -305,6 +296,15 @@ export default function EventDetailPage() {
 
           <Section title="About this event">
             <Typography sx={{ color: "#4a463d", fontSize: 16, lineHeight: 1.75 }}>{event.description}</Typography>
+            {event.source_url && (
+              <Typography sx={{ color: tokens.muted, fontSize: 14.5, lineHeight: 1.6, mt: 2 }}>
+                This is a short preview. For the full details, dates, and to sign up, click{" "}
+                <Box component="span" sx={{ color: tokens.accentDark, fontWeight: 600 }}>
+                  {event.source === "native" ? "Register" : `Register on ${event.source}`}
+                </Box>
+                .
+              </Typography>
+            )}
           </Section>
 
           {event.tags?.length > 0 && (
@@ -415,7 +415,7 @@ export default function EventDetailPage() {
           <Typography sx={{ fontFamily: tokens.serif, fontWeight: 600, fontSize: 22, mt: 0.5 }}>{whenText(event.date, event.end_date)}</Typography>
 
           <Stack direction="row" alignItems="center" spacing={1.25} sx={{ py: 1.75, mt: 2, borderTop: `1px solid ${tokens.line}`, color: "#4a463d", fontSize: 14.5 }}>
-            <span>{event.online ? "Online" : event.city || "—"}</span>
+            <span>{event.online ? "Online" : event.city || "-"}</span>
           </Stack>
 
           {event.registration_deadline && (

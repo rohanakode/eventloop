@@ -2,7 +2,7 @@
 
 Supabase signs tokens with either:
   1. The legacy HS256 secret (older projects), or
-  2. Asymmetric keys — ES256 / RS256 — published via a JWKS endpoint
+  2. Asymmetric keys - ES256 / RS256 - published via a JWKS endpoint
      at `${SUPABASE_URL}/auth/v1/.well-known/jwks.json`.
 
 We support both:
@@ -72,7 +72,7 @@ def _decode(token: str) -> dict:
                 algorithms=["HS256"],
                 audience="authenticated",
             )
-        # Asymmetric — fetch the right public key by kid from the JWKS.
+        # Asymmetric - fetch the right public key by kid from the JWKS.
         signing_key = _get_jwks_client().get_signing_key_from_jwt(token).key
         return jwt.decode(
             token,
@@ -81,7 +81,7 @@ def _decode(token: str) -> dict:
             audience="authenticated",
         )
     except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Session expired — sign in again.")
+        raise HTTPException(status_code=401, detail="Session expired - sign in again.")
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid session token.")
 
@@ -106,7 +106,7 @@ def require_user(authorization: Optional[str] = Header(None)) -> CurrentUser:
 
 def optional_user(authorization: Optional[str] = Header(None)) -> Optional[CurrentUser]:
     """FastAPI dependency: returns the user if signed in, None otherwise.
-    Never raises for missing/malformed headers — but still rejects a bad token."""
+    Never raises for missing/malformed headers - but still rejects a bad token."""
     token = _extract(authorization)
     if not token:
         return None
