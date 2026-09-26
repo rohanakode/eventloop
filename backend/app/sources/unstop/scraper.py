@@ -30,6 +30,7 @@ from __future__ import annotations
 import html
 import re
 from datetime import date
+from html.parser import HTMLParser
 
 import httpx
 
@@ -63,9 +64,53 @@ _MONTH_FIRST = re.compile(rf"\b([a-z]{{3,9}})\.?\s+(\d{{1,2}})(?:st|nd|rd|th)?{_
 _MODE_RE = re.compile(r"mode\s*[:\-]?\s*(online|offline|hybrid)", re.I)
 
 
+class _TextExtractor(HTMLParser):
+    """Collects only the visible text of an HTML fragment.
+
+    A regex like `<[^>]+>` breaks on tags whose attributes contain '>' (e.g.
+    Tailwind arbitrary-value classes `[&:has(...)>*]`, which some organizers
+    paste into Unstop descriptions), leaking CSS/markup as text. A real parser
+    tracks quoted attributes, so tag internals never reach the output."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self._parts: list[str] = []
+
+    def handle_data(self, data: str) -> None:
+        self._parts.append(data)
+
+    def get_text(self) -> str:
+        return " ".join(self._parts)
+
+
 def _plaintext(details: str | None) -> str:
-    """HTML -> plain text, keeping punctuation (so date/mode phrases survive)."""
-    return re.sub(r"\s+", " ", _TAG_RE.sub(" ", html.unescape(details or ""))).strip()
+    """HTML -> visible plain text, keeping punctuation (so date/mode phrases survive)."""
+    if not details:
+        return ""
+    parser = _TextExtractor()
+    try:
+        parser.feed(details)
+        text = parser.get_text()
+    except Exception:
+        text = _TAG_RE.sub(" ", html.unescape(details))  # last-resort fallback
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def _infer_type(title: str, description: str) -> str:
+    """Unstop's 'hackathons' listing also contains non-hackathons (pitch events,
+    ideathons, competitions). Infer the real category from the text instead of
+    assuming hackathon."""
+    t = f"{title} {description}".lower()
+    if "hackathon" in t or re.search(r"\bhack(?:s|athon|-)?\b", t) or "coding challenge" in t:
+        return "hackathon"
+    if any(w in t for w in ("workshop", "bootcamp", "masterclass", "training", "hands-on")):
+        return "workshop"
+    if any(w in t for w in ("conference", "summit", "conclave", "devfest", "meetup")):
+        return "conference"
+    if any(w in t for w in ("pitch", "startup", "founder", "demo day", "ideathon",
+                            "business plan", "b-plan", "stall", "entrepreneur", "launch")):
+        return "startup"
+    return "hackathon"  # default: it came from the hackathons listing
 
 
 def _mk_date(day: str, month: str, year: str) -> date | None:
@@ -167,17 +212,21 @@ class UnstopSource(EventSource):
             f"https://unstop.com/{opp['public_url']}" if opp.get("public_url") else None
         )
 
+        # Unstop's AI-tagged "workfunction" names make good, specific topic tags
+        # (e.g. "Applied AI", "Cloud Computing", "Creative Direction").
+        topics = [w.get("name") for w in (opp.get("workfunction") or []) if w.get("name")]
+
         return EventBase(
             title=title,
-            description=_strip_html(details) or "Hackathon on Unstop.",
-            type="hackathon",
+            description=_strip_html(details) or "Opportunity on Unstop.",
+            type=_infer_type(title, plain),
             date=event_date,
             registration_deadline=deadline,
             city=city,
             online=online,
             source=self.name,
             source_url=url,
-            tags=["hackathon"],
+            tags=topics,
         )
 
     def _resolve_location(self, opp: dict, plain: str) -> tuple[bool, str | None]:

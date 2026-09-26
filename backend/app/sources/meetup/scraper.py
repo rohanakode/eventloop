@@ -45,7 +45,9 @@ def _infer_type(text: str) -> EventType:
         return "hackathon"
     if any(w in t for w in ("workshop", "bootcamp", "hands-on", "training")):
         return "workshop"
-    if any(w in t for w in ("conference", "summit", "devfest", "conf")):
+    # Note: no bare "conf" here -- it wrongly matched "Confluent" (Kafka's host)
+    # and mislabeled Kafka meetups as conferences.
+    if any(w in t for w in ("conference", "summit", "devfest", "conclave")):
         return "conference"
     if any(w in t for w in ("startup", "founder", "pitch", "demo day")):
         return "startup"
