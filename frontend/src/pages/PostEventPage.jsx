@@ -815,7 +815,7 @@ function PostEventForm({ editing, onPublished, onCancel }) {
               label="Registration URL"
               InputLabelProps={{ shrink: true }}
               error={Boolean(shownError("sourceUrl"))}
-              helperText={shownError("sourceUrl") || "Where attendees sign up. Devfolio, Luma, a Google Form, whatever you use."}
+              helperText={shownError("sourceUrl") || " "}
               fullWidth
               InputProps={{ startAdornment: <InputAdornment position="start"><LinkIcon sx={{ fontSize: 18, color: tokens.muted }} /></InputAdornment> }}
             />

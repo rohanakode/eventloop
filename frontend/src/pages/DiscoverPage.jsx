@@ -79,7 +79,7 @@ export default function DiscoverPage() {
             {isLoading && [...Array(5)].map((_, i) => <RowSkeleton key={i} />)}
             {isError && (
               <Typography sx={{ color: tokens.muted, py: 6, textAlign: "center" }}>
-                Couldn’t load events. Is the backend running on localhost:8000?
+                Couldn’t load events. Please try again in a moment.
               </Typography>
             )}
             {!isLoading && !isError && filtered.length === 0 && (

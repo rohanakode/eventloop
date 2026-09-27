@@ -22,12 +22,6 @@ export async function getTeammatesForEvent(eventId) {
   return data;
 }
 
-// Every teammate post the signed-in user has made.
-export async function getMyTeammatePosts() {
-  const { data } = await api.get("/teammates/mine");
-  return data;
-}
-
 // Withdraw yourself from a teammate board.
 export async function deleteTeammatePost(id) {
   await api.delete(`/teammates/${id}`);

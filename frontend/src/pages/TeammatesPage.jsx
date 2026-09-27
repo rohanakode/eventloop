@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Container, Box, Stack, Typography, CircularProgress } from "@mui/material";
 import GroupsIcon from "@mui/icons-material/Groups";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -8,25 +8,14 @@ import { useAuth } from "../lib/AuthProvider";
 import { useToast } from "../lib/Toast";
 import { tokens } from "../theme";
 
-const CATEGORIES = [
-  { key: null,            label: "All" },
-  { key: "hackathon",     label: "Hackathons" },
-  { key: "startup",       label: "Startup" },
-  { key: "workshop",      label: "Workshops" },
-  { key: "conference",    label: "Conferences" },
-  { key: "networking",    label: "Networking" },
-  { key: "communication", label: "Communication" },
-];
-
 export default function TeammatesPage() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const showToast = useToast();
-  const [type, setType] = useState(null);
 
   const { data: posts = [], isLoading } = useQuery({
-    queryKey: ["teammates", { type }],
-    queryFn: () => getTeammates({ type }),
+    queryKey: ["teammates"],
+    queryFn: () => getTeammates(),
   });
 
   const withdraw = useMutation({
@@ -68,34 +57,6 @@ export default function TeammatesPage() {
           Everyone looking for teammates across every event on EventLoop. Skim the pitches, reach out directly.
         </Typography>
       </Box>
-
-      {/* Category filter */}
-      <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mb: 4 }}>
-        {CATEGORIES.map((c) => {
-          const active = type === c.key;
-          return (
-            <Box
-              key={c.label}
-              onClick={() => setType(c.key)}
-              sx={{
-                cursor: "pointer",
-                px: 2,
-                py: 0.85,
-                borderRadius: 100,
-                fontSize: 13,
-                fontWeight: 600,
-                border: `1.5px solid ${active ? tokens.accent : tokens.line}`,
-                bgcolor: active ? tokens.accentSoft : "transparent",
-                color: active ? tokens.accentDark : tokens.muted,
-                transition: ".15s",
-                "&:hover": { borderColor: tokens.accent, color: tokens.ink },
-              }}
-            >
-              {c.label}
-            </Box>
-          );
-        })}
-      </Stack>
 
       {/* Content */}
       {isLoading ? (

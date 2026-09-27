@@ -95,9 +95,11 @@ export default function AuthDialog({ open, onClose, initialMode = "signin" }) {
           <Typography sx={{ fontSize: 12, fontWeight: 600, color: tokens.accentDark, letterSpacing: "0.4px", textTransform: "uppercase" }}>
             {mode === "signin" ? "Welcome back" : mode === "signup" ? "New here" : "Reset password"}
           </Typography>
-          <Box onClick={onClose} sx={{ cursor: "pointer", color: tokens.muted, "&:hover": { color: tokens.ink } }}>
-            <CloseIcon sx={{ fontSize: 20 }} />
-          </Box>
+          {mode !== "reset" && (
+            <Box onClick={onClose} sx={{ cursor: "pointer", color: tokens.muted, "&:hover": { color: tokens.ink } }}>
+              <CloseIcon sx={{ fontSize: 20 }} />
+            </Box>
+          )}
         </Stack>
 
         <Typography variant="h1" sx={{ fontSize: 30, lineHeight: 1.05, mb: 1 }}>
