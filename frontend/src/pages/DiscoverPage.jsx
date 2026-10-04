@@ -34,6 +34,20 @@ export default function DiscoverPage() {
     queryFn: () => getEvents(),
   });
 
+  // Backend runs on Render's free tier and sleeps after inactivity. If the
+  // first /events request takes more than 3s, surface a gentle note so a
+  // cold-start visitor doesn't assume the site is dead. Warm loads never
+  // see it.
+  const [showSlowNotice, setShowSlowNotice] = useState(false);
+  useEffect(() => {
+    if (!isLoading) {
+      setShowSlowNotice(false);
+      return;
+    }
+    const t = setTimeout(() => setShowSlowNotice(true), 2000);
+    return () => clearTimeout(t);
+  }, [isLoading]);
+
   const { data: results = [], isFetching: searching } = useQuery({
     queryKey: ["search", debouncedQuery],
     queryFn: () => searchEvents(debouncedQuery),
@@ -70,9 +84,17 @@ export default function DiscoverPage() {
         <>
           <CategoryTabs categories={categories} active={active} onChange={setActive} />
           <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mt: 2.75, mb: 0.5, flexWrap: "wrap", gap: 1 }}>
-            <Typography sx={{ color: tokens.muted, fontSize: 14 }}>
-              Showing <b style={{ color: tokens.ink }}>{filtered.length}</b> upcoming events in Hyderabad & online
-            </Typography>
+            {isLoading ? (
+              showSlowNotice && (
+                <Typography sx={{ color: tokens.muted, fontSize: 14 }}>
+                  Waiting for the server. It takes a little time to load since it's deployed on Render's free tier. Thanks for your patience.
+                </Typography>
+              )
+            ) : (
+              <Typography sx={{ color: tokens.muted, fontSize: 14 }}>
+                Showing <b style={{ color: tokens.ink }}>{filtered.length}</b> upcoming events in Hyderabad & online
+              </Typography>
+            )}
           </Stack>
 
           <Box sx={{ mt: 0.5, pb: 8 }}>
